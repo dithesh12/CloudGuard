@@ -1,7 +1,8 @@
 
 "use client";
 
-import * as React from "react";
+import  React from "react";
+import PropTypes from "prop-types";
 import { format } from "date-fns";
 import {
   Calendar as CalendarIcon,
@@ -55,17 +56,17 @@ import { useRouter } from "next/navigation";
 import { TimePicker } from "./time-picker";
 
 
-const initialUsers = [];
 
 
-export default function AccessDashboard({ user }) {
+
+function AccessDashboard({ user }) {
   const { toast } = useToast();
   const router = useRouter();
   const [date, setDate] = React.useState();
   const [startTime, setStartTime] = React.useState('09');
   const [endTime, setEndTime] = React.useState('17');
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
-  const [users, setUsers] = React.useState(() => initialUsers.map((u, i) => ({...u, id: `user-${i+1}`})));
+  const [users, setUsers] = React.useState([]);
   const [selectedFile, setSelectedFile] = React.useState(null);
   const [editingUser, setEditingUser] = React.useState(null);
   const [isUserDialogOpen, setIsUserDialogOpen] = React.useState(false);
@@ -289,20 +290,20 @@ export default function AccessDashboard({ user }) {
                         disabled={!selectedFile}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date?.from ? (
-                          date.to ? (
-                            <>
-                              {format(date.from, "LLL dd, y")} -{" "}
-                              {format(date.to, "LLL dd, y")}
-                            </>
-                          ) : (
-                            format(date.from, "LLL dd, y")
-                          )
-                        ) : (
-                          <span>Pick a date range</span>
-                        )}
+                        {(() => {
+                          if (date?.from) {
+                            if (date.to) {
+                              return <span>{format(date.from, "LLL dd, y")} - {format(date.to, "LLL dd, y")}</span>;
+                            } else {
+                              return <span>{format(date.from, "LLL dd, y")}</span>;
+                            }
+                          } else {
+                            return <span>Pick a date range</span>;
+                          }
+                        })()}
                       </Button>
                     </PopoverTrigger>
+                    {/* ...rest of your JSX remains unchanged... */}
                     <PopoverContent className="w-auto p-0" align="start" side="bottom">
                       <Calendar
                         initialFocus
@@ -370,4 +371,16 @@ export default function AccessDashboard({ user }) {
     </div>
   );
 }
+
+AccessDashboard.propTypes = {
+  user: PropTypes.shape({
+    id: PropTypes.string,
+    email: PropTypes.string,
+    photoURL: PropTypes.string,
+    displayName: PropTypes.string,
+  }),
+};
+
+export default AccessDashboard;
+
 

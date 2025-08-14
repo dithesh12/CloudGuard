@@ -2,9 +2,7 @@
 const nextConfig = {
   /* config options here */
   experimental: {
-    allowedDevOrigins: [
-      'https://6000-firebase-studio-1754297922229.cluster-ejd22kqny5htuv5dfowoyipt52.cloudworkstations.dev',
-    ],
+    // (removed allowedDevOrigins, not a valid Next.js option)
   },
   eslint: {
     ignoreDuringBuilds: true,
