@@ -8,11 +8,9 @@ import {
   Clock,
   Eye,
   Save,
-  Cloud,
   UserPlus,
   RotateCcw,
   Unplug,
-  LogOut,
   Upload,
   ShieldCheck,
 } from "lucide-react";
@@ -39,19 +37,6 @@ import { Separator } from "./ui/separator";
 import { UserAccessTable } from "./user-access-table";
 import { AddUserDialog } from "./add-user-dialog";
 import { useToast } from "../hooks/use-toast";
-import { ThemeToggle } from "./theme-toggle";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
-import { auth } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
-import { useRouter } from "next/navigation";
 import { TimePicker } from "./time-picker";
 
 
@@ -60,7 +45,6 @@ const initialUsers = [];
 
 export default function AccessDashboard({ user }) {
   const { toast } = useToast();
-  const router = useRouter();
   const [date, setDate] = React.useState();
   const [startTime, setStartTime] = React.useState('09');
   const [endTime, setEndTime] = React.useState('17');
@@ -179,59 +163,8 @@ export default function AccessDashboard({ user }) {
     });
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      router.push('/login');
-    } catch (error) {
-      console.error("Logout error:", error);
-      toast({
-        title: "Logout Failed",
-        description: "An error occurred while logging out.",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
-    <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-      <header className="mb-8 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Cloud className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            CloudGuard
-          </h1>
-        </div>
-        <div className="flex items-center gap-4">
-          <ThemeToggle />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                <Avatar>
-                  <AvatarImage src={user?.photoURL} data-ai-hint="profile picture" />
-                  <AvatarFallback>{user?.email?.[0]?.toUpperCase()}</AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{user?.displayName || user?.email}</p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user?.email}
-                  </p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </header>
-      
+    <div className="container mx-auto p-0">
       <Card className="w-full max-w-4xl mx-auto shadow-lg rounded-xl bg-card/50 backdrop-blur-sm border-border/20">
         <CardHeader>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -370,4 +303,3 @@ export default function AccessDashboard({ user }) {
     </div>
   );
 }
-

@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useEffect } from 'react';
 import AccessDashboard from '../../components/access-dashboard';
@@ -22,8 +23,6 @@ export default function DashboardPage() {
 
 
   return (
-    <main className="min-h-screen">
-      <AccessDashboard user={user} />
-    </main>
+    <AccessDashboard user={user} />
   );
 }
