@@ -41,6 +41,9 @@ import { AddUserDialog } from "./add-user-dialog";
 import { useToast } from "../hooks/use-toast";
 import { TimePicker } from "./time-picker";
 import { OAUTH_CLIENT_ID, API_KEY } from "@/lib/firebase";
+import { updatePermissions } from "@/ai/flows/update-permissions-flow";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 const initialUsers = [
   {
@@ -52,7 +55,7 @@ const initialUsers = [
   },
 ];
 
-const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file';
+const SCOPES = 'https://www.googleapis.com/auth/drive';
 const APP_ID = OAUTH_CLIENT_ID.split('-')[0];
 
 export default function AccessDashboard({ user }) {
@@ -70,49 +73,49 @@ export default function AccessDashboard({ user }) {
   const [gisLoaded, setGisLoaded] = React.useState(false);
   const [pickerApiLoaded, setPickerApiLoaded] = React.useState(false);
   const [isPickerLoading, setIsPickerLoading] = React.useState(false);
-  const tokenClient = React.useRef(null);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [tokenClient, setTokenClient] = React.useState(null);
   
   const isDriveReady = gapiLoaded && gisLoaded && pickerApiLoaded;
-
-  const pickerCallback = React.useCallback((data) => {
-    setIsPickerLoading(false);
-    if (data.action === google.picker.Action.PICKED) {
-      const file = data.docs[0];
-      setSelectedFile({
-        name: file.name,
-        url: file.url,
-        id: file.id,
-      });
-       toast({
-        title: "File Selected",
-        description: `Now managing access for ${file.name}.`,
-      });
-    } else if (data.action === google.picker.Action.CANCEL) {
-       toast({
-        title: "Selection Cancelled",
-        description: `You can select a file at any time.`,
-        variant: "default"
-      });
-    }
-  }, [toast]);
-
-  const createPicker = React.useCallback((token) => {
-    if (!isDriveReady) {
-      toast({ title: 'Error', description: 'Picker API is not loaded yet.', variant: 'destructive'});
-      setIsPickerLoading(false);
-      return;
-    };
-
-    const picker = new google.picker.PickerBuilder()
-      .addView(google.picker.ViewId.DOCS)
-      .setOAuthToken(token)
-      .setDeveloperKey(API_KEY)
-      .setAppId(APP_ID)
-      .setCallback(pickerCallback)
-      .build();
+  
+  const handleAuthResult = React.useCallback((tokenResponse) => {
+    if (tokenResponse && tokenResponse.access_token) {
+      if (!isDriveReady) return;
       
-    picker.setVisible(true);
-  }, [isDriveReady, pickerCallback, toast]);
+      const picker = new google.picker.PickerBuilder()
+        .addView(google.picker.ViewId.DOCS)
+        .setOAuthToken(tokenResponse.access_token)
+        .setDeveloperKey(API_KEY)
+        .setAppId(APP_ID)
+        .setCallback((data) => {
+           setIsPickerLoading(false);
+           if (data.action === google.picker.Action.PICKED) {
+             const file = data.docs[0];
+             setSelectedFile({
+               name: file.name,
+               url: file.url,
+               id: file.id,
+             });
+              toast({
+               title: "File Selected",
+               description: `Now managing access for ${file.name}.`,
+             });
+           } else if (data.action === google.picker.Action.CANCEL) {
+              toast({
+               title: "Selection Cancelled",
+               description: `You can select a file at any time.`,
+               variant: "default"
+             });
+           }
+        })
+        .build();
+      picker.setVisible(true);
+
+    } else {
+      setIsPickerLoading(false);
+      toast({ title: 'Authentication Error', description: 'Failed to get access token.', variant: 'destructive'});
+    }
+  }, [isDriveReady, toast]);
 
   React.useEffect(() => {
     const gapiScript = document.createElement('script');
@@ -136,38 +139,25 @@ export default function AccessDashboard({ user }) {
     gisScript.onload = () => {
       setGisLoaded(true);
       if (window.google?.accounts?.oauth2) {
-        tokenClient.current = window.google.accounts.oauth2.initTokenClient({
+        setTokenClient(window.google.accounts.oauth2.initTokenClient({
           client_id: OAUTH_CLIENT_ID,
           scope: SCOPES,
-          callback: (tokenResponse) => {
-            if (tokenResponse && tokenResponse.access_token) {
-              createPicker(tokenResponse.access_token);
-            } else {
-              setIsPickerLoading(false);
-              toast({ title: 'Authentication Error', description: 'Failed to get access token.', variant: 'destructive'});
-            }
-          },
-        });
+          callback: handleAuthResult,
+        }));
       }
     };
     document.body.appendChild(gisScript);
     return () => document.body.removeChild(gisScript);
-  }, [gapiLoaded, createPicker, toast]);
+  }, [gapiLoaded, handleAuthResult]);
 
   const handleAuthClick = async () => {
-    if (!isDriveReady || !window.gapi?.picker) {
+    if (!isDriveReady || !tokenClient) {
       toast({ title: 'Error', description: 'Picker API is not loaded yet.', variant: 'destructive'});
       return;
     }
     setIsPickerLoading(true);
-    if (tokenClient.current) {
-        tokenClient.current.requestAccessToken({prompt: 'consent'});
-    } else {
-      setIsPickerLoading(false);
-      toast({ title: 'Initialization Error', description: 'Google authentication is not ready yet.', variant: 'destructive'});
-    }
+    tokenClient.requestAccessToken({prompt: 'consent'});
   };
-
 
   const handleDateSelect = (selectedDate) => {
     setDate(selectedDate);
@@ -234,7 +224,7 @@ export default function AccessDashboard({ user }) {
     });
   };
   
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (!selectedFile) {
        toast({
         title: "No File Selected",
@@ -243,10 +233,48 @@ export default function AccessDashboard({ user }) {
       });
       return;
     }
-    toast({
-      title: "Settings Saved",
-      description: `Access control settings for ${selectedFile.name} have been updated.`,
-    });
+
+    if (!user) {
+       toast({
+        title: "Authentication Error",
+        variant: "destructive",
+        description: "You must be logged in to save changes.",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      const expirationDate = date?.to ? date.to.toISOString() : undefined;
+      
+      const permissionsToSet = users.map(u => ({
+        email: u.email,
+        role: u.accessLevel.toLowerCase(),
+      }));
+
+      await updatePermissions({
+        fileId: selectedFile.id,
+        permissions: permissionsToSet,
+        expirationDate: expirationDate,
+        idToken: idToken,
+      });
+
+      toast({
+        title: "Settings Saved",
+        description: `Access control settings for ${selectedFile.name} have been updated.`,
+      });
+    } catch (error) {
+       console.error("Failed to save changes:", error);
+       toast({
+        title: "Save Failed",
+        variant: "destructive",
+        description: error.message || "An unexpected error occurred.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
   
   const handleReset = () => {
@@ -310,7 +338,7 @@ export default function AccessDashboard({ user }) {
               <h3 className="text-lg font-medium mb-4">Global Access Rules</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="date-range">Access Duration</Label>
+                  <Label htmlFor="date-range">Access Expiration</Label>
                   <Popover open={isCalendarOpen} onOpenChange={handleCalendarOpenChange}>
                     <PopoverTrigger asChild>
                       <Button
@@ -318,51 +346,43 @@ export default function AccessDashboard({ user }) {
                         variant={"outline"}
                         className={cn(
                           "w-full justify-start text-left font-normal",
-                          !date && "text-muted-foreground"
+                          !date?.to && "text-muted-foreground"
                         )}
                         disabled={!selectedFile}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date?.from ? (
-                          date.to ? (
-                            <>
-                              {format(date.from, "LLL dd, y")} -{" "}
-                              {format(date.to, "LLL dd, y")}
-                            </>
-                          ) : (
-                            format(date.from, "LLL dd, y")
-                          )
+                        {date?.to ? (
+                          format(date.to, "LLL dd, y")
                         ) : (
-                          <span>Pick a date range</span>
+                          <span>Pick an expiration date</span>
                         )}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start" side="bottom">
                       <Calendar
                         initialFocus
-                        mode="range"
-                        defaultMonth={date?.from}
-                        selected={date}
-                        onSelect={handleDateSelect}
+                        mode="single"
+                        selected={date?.to}
+                        onSelect={(day) => setDate({ from: date?.from, to: day })}
                         numberOfMonths={1}
                       />
                     </PopoverContent>
                   </Popover>
                 </div>
                 <div className="space-y-2">
-                  <Label>Time Window (Optional)</Label>
+                  <Label>Time Window (Optional - Not Implemented)</Label>
                   <div className="flex items-center gap-2">
                      <Clock className="h-5 w-5 text-muted-foreground" />
-                     <TimePicker value={startTime} onChange={setStartTime} disabled={!selectedFile} />
+                     <TimePicker value={startTime} onChange={setStartTime} disabled={true} />
                     <span className="text-muted-foreground">-</span>
-                    <TimePicker value={endTime} onChange={setEndTime} disabled={!selectedFile} />
+                    <TimePicker value={endTime} onChange={setEndTime} disabled={true} />
                   </div>
                 </div>
                  <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="view-limit">View Limit (Optional)</Label>
+                  <Label htmlFor="view-limit">View Limit (Optional - Not Implemented)</Label>
                   <div className="relative">
                     <Eye className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input id="view-limit" type="number" placeholder="e.g., 10 views" className="pl-10" disabled={!selectedFile} />
+                    <Input id="view-limit" type="number" placeholder="e.g., 10 views" className="pl-10" disabled={true} />
                   </div>
                 </div>
               </div>
@@ -391,18 +411,16 @@ export default function AccessDashboard({ user }) {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-6">
-          <Button variant="ghost" onClick={handleReset} disabled={!selectedFile} className="w-full sm:w-auto">
+          <Button variant="ghost" onClick={handleReset} disabled={!selectedFile || isSaving} className="w-full sm:w-auto">
              <RotateCcw className="mr-2 h-4 w-4" />
             Reset
           </Button>
-          <Button onClick={handleSaveChanges} disabled={!selectedFile} className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto">
-            <Save className="mr-2 h-4 w-4" />
-            Save Changes
+          <Button onClick={handleSaveChanges} disabled={!selectedFile || isSaving} className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto">
+            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {isSaving ? 'Saving...' : 'Save Changes'}
           </Button>
         </CardFooter>
       </Card>
     </div>
   );
 }
-
-    
