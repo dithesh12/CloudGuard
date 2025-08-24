@@ -14,6 +14,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "./ui/dialog";
 import {
   Form,
@@ -137,5 +138,3 @@ export function AddUserDialog({ children, onSave, isOpen, setIsOpen, editingUser
     </Dialog>
   );
 }
-
-    
