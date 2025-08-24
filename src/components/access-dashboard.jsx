@@ -43,6 +43,10 @@ import { TimePicker } from "./time-picker";
 
 const initialUsers = [];
 
+const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyCrTk09il9LyR0iIyQ_PMbQ62xC8tqJ0Xs";
+const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "241317652095-257j8s51m69p3m18bcuq3cvqaacll3f0.apps.googleusercontent.com";
+const APP_ID = process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "241317652095";
+
 
 export default function AccessDashboard({ user }) {
   const { toast } = useToast();
@@ -55,16 +59,76 @@ export default function AccessDashboard({ user }) {
   const [editingUser, setEditingUser] = React.useState(null);
   const [isUserDialogOpen, setIsUserDialogOpen] = React.useState(false);
 
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setSelectedFile(file);
-      toast({
+  const [gapiLoaded, setGapiLoaded] = React.useState(false);
+  const [gisLoaded, setGisLoaded] = React.useState(false);
+  const [tokenClient, setTokenClient] = React.useState(null);
+  
+  // Google Picker Logic
+  React.useEffect(() => {
+    const scriptGapi = document.createElement('script');
+    scriptGapi.src = 'https://apis.google.com/js/api.js';
+    scriptGapi.async = true;
+    scriptGapi.defer = true;
+    scriptGapi.onload = () => window.gapi.load('picker', () => setGapiLoaded(true));
+    document.body.appendChild(scriptGapi);
+
+    const scriptGis = document.createElement('script');
+    scriptGis.src = 'https://accounts.google.com/gsi/client';
+    scriptGis.async = true;
+    scriptGis.defer = true;
+    scriptGis.onload = () => {
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: 'https://www.googleapis.com/auth/drive.readonly',
+        callback: (tokenResponse) => {
+          if (tokenResponse.access_token) {
+            createPicker(tokenResponse.access_token);
+          }
+        },
+      });
+      setTokenClient(client);
+      setGisLoaded(true);
+    };
+    document.body.appendChild(scriptGis);
+
+  }, []);
+
+  const handleAuthClick = () => {
+    if (tokenClient) {
+      tokenClient.requestAccessToken();
+    }
+  };
+
+  const createPicker = (accessToken) => {
+    const view = new window.google.picker.View(window.google.picker.ViewId.DOCS);
+    view.setMimeTypes("image/png,image/jpeg,image/jpg,application/pdf");
+    const picker = new window.google.picker.PickerBuilder()
+      .enableFeature(window.google.picker.Feature.NAV_HIDDEN)
+      .setAppId(APP_ID)
+      .setOAuthToken(accessToken)
+      .addView(view)
+      .addView(new window.google.picker.DocsUploadView())
+      .setDeveloperKey(API_KEY)
+      .setCallback(pickerCallback)
+      .build();
+    picker.setVisible(true);
+  };
+
+  const pickerCallback = (data) => {
+    if (data.action === window.google.picker.Action.PICKED) {
+      const file = data.docs[0];
+      setSelectedFile({
+        name: file.name,
+        url: file.url,
+        id: file.id,
+      });
+       toast({
         title: "File Selected",
         description: `Now managing access for ${file.name}.`,
       });
     }
   };
+
 
   const handleDateSelect = (selectedDate) => {
     setDate(selectedDate);
@@ -82,7 +146,6 @@ export default function AccessDashboard({ user }) {
 
   const handleDisconnect = () => {
     setSelectedFile(null);
-    document.getElementById('file-upload').value = '';
     toast({
       title: "File Disconnected",
       description: "Select a new file to manage its access.",
@@ -175,7 +238,7 @@ export default function AccessDashboard({ user }) {
             {selectedFile ? (
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                  <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
-                   <a href={URL.createObjectURL(selectedFile)} target="_blank" rel="noopener noreferrer">
+                   <a href={selectedFile.url} target="_blank" rel="noopener noreferrer">
                     <LinkIcon className="mr-2 h-4 w-4" />
                     Open File
                   </a>
@@ -186,19 +249,16 @@ export default function AccessDashboard({ user }) {
                 </Button>
               </div>
             ) : (
-              <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
-                <Label htmlFor="file-upload" className="cursor-pointer">
-                  <FileText className="mr-2 h-4 w-4" />
-                  Select File
-                </Label>
+               <Button variant="outline" size="sm" onClick={handleAuthClick} disabled={!gapiLoaded || !gisLoaded || !user} className="w-full sm:w-auto">
+                <FileText className="mr-2 h-4 w-4" />
+                Select from Google Drive
               </Button>
             )}
           </div>
-          <Input id="file-upload" type="file" className="hidden" onChange={handleFileChange} />
           <CardDescription>
             {selectedFile 
               ? `Manage who can access ${selectedFile.name} and set access rules.`
-              : "Select a file from your device to manage its access."
+              : "Select a file from your Google Drive to manage its access."
             }
           </CardDescription>
         </CardHeader>

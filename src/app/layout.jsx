@@ -12,6 +12,8 @@ export default function RootLayout({ children }) {
       <head>
         <title>CloudGuard</title>
         <meta name="description" content="Advanced access control for your files." />
+        <Script src="https://apis.google.com/js/api.js" strategy="beforeInteractive"></Script>
+        <Script src="https://accounts.google.com/gsi/client" strategy="beforeInteractive"></Script>
       </head>
       <body className={`${inter.className} antialiased`}>
         <ThemeProvider
