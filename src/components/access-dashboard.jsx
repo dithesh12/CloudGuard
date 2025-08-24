@@ -47,21 +47,15 @@ import { updatePermissions } from "@/ai/flows/update-permissions-flow";
 import { auth } from "@/lib/firebase";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
-const initialUsers = [
-  {
-    name: "Test User",
-    email: "test@example.com",
-    avatar: `https://placehold.co/40x40.png`,
-    accessLevel: "Viewer",
-  },
-];
+const initialUsers = [];
 
 const SCOPES = 'https://www.googleapis.com/auth/drive';
 const APP_ID = OAUTH_CLIENT_ID.split('-')[0];
 
 export default function AccessDashboard({ user }) {
   const { toast } = useToast();
-  const [date, setDate] = React.useState();
+  const [dateRange, setDateRange] = React.useState({ from: null, to: null });
+  const [startTime, setStartTime] = React.useState('09:00');
   const [endTime, setEndTime] = React.useState('17:00');
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
   const [users, setUsers] = React.useState(() => initialUsers.map((u, i) => ({...u, id: `user-${i+1}`})));
@@ -159,8 +153,8 @@ export default function AccessDashboard({ user }) {
     tokenClient.requestAccessToken({prompt: 'consent'});
   };
 
-  const handleDateSelect = (selectedDate) => {
-    setDate(selectedDate);
+  const handleDateSelect = (selectedRange) => {
+    setDateRange(selectedRange);
     setIsCalendarOpen(false);
   };
   
@@ -248,9 +242,9 @@ export default function AccessDashboard({ user }) {
       const idToken = await auth.currentUser.getIdToken();
       
       let expirationDate;
-      if (date) {
+      if (dateRange?.to) {
         const [hours, minutes] = endTime.split(':');
-        const finalDate = new Date(date);
+        const finalDate = new Date(dateRange.to);
         finalDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
         expirationDate = finalDate.toISOString();
       }
@@ -288,13 +282,16 @@ export default function AccessDashboard({ user }) {
   };
 
   const handleCopyToClipboard = () => {
-    navigator.clipboard.writeText(generatedLink);
-    toast({ title: "Link Copied!", description: "The secure link has been copied to your clipboard." });
+    if (generatedLink) {
+        navigator.clipboard.writeText(generatedLink);
+        toast({ title: "Link Copied!", description: "The secure link has been copied to your clipboard." });
+    }
   };
   
   const handleReset = () => {
-    setUsers(initialUsers.map((u, i) => ({...u, id: `user-${i+1}`})));
-    setDate(null);
+    setUsers([]);
+    setDateRange({ from: null, to: null });
+    setStartTime('09:00');
     setEndTime('17:00');
     setGeneratedLink(null);
     toast({
@@ -357,54 +354,53 @@ export default function AccessDashboard({ user }) {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Access Expires On</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <Popover open={isCalendarOpen} onOpenChange={handleCalendarOpenChange}>
+                    <Label>Access Window</Label>
+                     <Popover open={isCalendarOpen} onOpenChange={handleCalendarOpenChange}>
                         <PopoverTrigger asChild>
                           <Button
+                            id="date"
                             variant={"outline"}
-                            className={cn( "w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
+                            className={cn( "w-full justify-start text-left font-normal", !dateRange?.from && "text-muted-foreground"
+                            )}
                             disabled={!selectedFile}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date ? format(date, "LLL dd, y") : <span>Pick a date</span>}
+                            {dateRange?.from ? (
+                              dateRange.to ? (
+                                <>
+                                  {format(dateRange.from, "LLL dd, y")} -{" "}
+                                  {format(dateRange.to, "LLL dd, y")}
+                                </>
+                              ) : (
+                                format(dateRange.from, "LLL dd, y")
+                              )
+                            ) : (
+                              <span>Pick a date range</span>
+                            )}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
                             initialFocus
-                            mode="single"
-                            selected={date}
+                            mode="range"
+                            defaultMonth={dateRange?.from}
+                            selected={dateRange}
                             onSelect={handleDateSelect}
-                            numberOfMonths={1}
-                            disabled={(day) => day < new Date(new Date().setHours(0,0,0,0))}
+                            numberOfMonths={2}
+                            disabled={(day) => day < new Date(new Date().setDate(new Date().getDate() - 1))}
                           />
                         </PopoverContent>
                       </Popover>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-5 w-5 text-muted-foreground" />
-                        <TimePicker value={endTime} onChange={(val) => {setEndTime(val); setGeneratedLink(null);}} disabled={!selectedFile || !date} />
-                      </div>
-                    </div>
                   </div>
 
                    <div className="space-y-2">
-                      <Label>View Limit</Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger className="w-full text-left">
-                              <div className="flex items-center gap-2">
-                                <EyeOff className="h-5 w-5 text-muted-foreground" />
-                                <Input value="Unlimited" disabled className="cursor-not-allowed"/>
-                              </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>View limits are not supported by the Google Drive API.</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <Label>Time Window</Label>
+                      <div className="flex items-center gap-2">
+                         <TimePicker value={startTime} onChange={(val) => {setStartTime(val); setGeneratedLink(null);}} disabled={!selectedFile || !dateRange?.from} />
+                         <span>-</span>
+                         <TimePicker value={endTime} onChange={(val) => {setEndTime(val); setGeneratedLink(null);}} disabled={!selectedFile || !dateRange?.from} />
+                      </div>
                     </div>
-
                 </div>
 
                 <div>
@@ -470,3 +466,5 @@ export default function AccessDashboard({ user }) {
     </div>
   );
 }
+
+    
