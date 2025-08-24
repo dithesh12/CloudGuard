@@ -43,9 +43,9 @@ import { TimePicker } from "./time-picker";
 
 const initialUsers = [];
 
-const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyCrTk09il9LyR0iIyQ_PMbQ62xC8tqJ0Xs";
-const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "241317652095-257j8s51m69p3m18bcuq3cvqaacll3f0.apps.googleusercontent.com";
-const APP_ID = process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "241317652095";
+const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+const APP_ID = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
 
 
 export default function AccessDashboard({ user }) {
@@ -65,35 +65,37 @@ export default function AccessDashboard({ user }) {
   
   // Google Picker Logic
   React.useEffect(() => {
-    const scriptGapi = document.createElement('script');
-    scriptGapi.src = 'https://apis.google.com/js/api.js';
-    scriptGapi.async = true;
-    scriptGapi.defer = true;
-    scriptGapi.onload = () => window.gapi.load('picker', () => setGapiLoaded(true));
-    document.body.appendChild(scriptGapi);
-
-    const scriptGis = document.createElement('script');
-    scriptGis.src = 'https://accounts.google.com/gsi/client';
-    scriptGis.async = true;
-    scriptGis.defer = true;
-    scriptGis.onload = () => {
-      const client = window.google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: 'https://www.googleapis.com/auth/drive.readonly',
-        callback: (tokenResponse) => {
-          if (tokenResponse.access_token) {
-            createPicker(tokenResponse.access_token);
-          }
-        },
-      });
-      setTokenClient(client);
-      setGisLoaded(true);
-    };
-    document.body.appendChild(scriptGis);
-
+    if (typeof window !== 'undefined') {
+        setGapiLoaded(!!window.gapi);
+        setGisLoaded(!!window.google);
+    }
   }, []);
 
+  React.useEffect(() => {
+    if (gisLoaded && !tokenClient) {
+        const client = window.google.accounts.oauth2.initTokenClient({
+            client_id: CLIENT_ID,
+            scope: 'https://www.googleapis.com/auth/drive.readonly',
+            callback: (tokenResponse) => {
+              if (tokenResponse.access_token) {
+                createPicker(tokenResponse.access_token);
+              }
+            },
+          });
+          setTokenClient(client);
+    }
+  }, [gisLoaded, tokenClient]);
+
+
   const handleAuthClick = () => {
+    if (!CLIENT_ID || !API_KEY) {
+        toast({
+            title: "Configuration Error",
+            description: "Google Drive API credentials are not configured.",
+            variant: "destructive",
+        });
+        return;
+    }
     if (tokenClient) {
       tokenClient.requestAccessToken();
     }
@@ -106,8 +108,6 @@ export default function AccessDashboard({ user }) {
       .enableFeature(window.google.picker.Feature.NAV_HIDDEN)
       .setAppId(APP_ID)
       .setOAuthToken(accessToken)
-      .addView(view)
-      .addView(new window.google.picker.DocsUploadView())
       .setDeveloperKey(API_KEY)
       .setCallback(pickerCallback)
       .build();
@@ -363,3 +363,5 @@ export default function AccessDashboard({ user }) {
     </div>
   );
 }
+
+    
