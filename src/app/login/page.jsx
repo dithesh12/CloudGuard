@@ -50,17 +50,12 @@ export default function LoginPage() {
       console.error("Firebase login error:", error);
       let errorMessage = "An unexpected error occurred. Please try again.";
       if (error.code === 'auth/invalid-credential') {
-        errorMessage = "Invalid email or password. Please check your credentials, or sign up if you don't have an account.";
+        errorMessage = "Invalid email or password. Please check your credentials, or click 'Sign up' to create a new account.";
       } else if (error.code) {
         errorMessage = error.message;
       }
       
       setError(errorMessage);
-      toast({
-        title: "Login Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
     } finally {
       setIsLoading(false);
     }
@@ -81,11 +76,6 @@ export default function LoginPage() {
         description = error.message;
       }
       setError(description);
-      toast({
-        title: "Google Sign-In Failed",
-        description: description,
-        variant: "destructive",
-      });
     } finally {
       setIsGoogleLoading(false);
     }
