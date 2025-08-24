@@ -13,7 +13,7 @@ export const firebaseConfig = {
 };
 
 // This is your OAuth 2.0 Client ID for the web application
-export const OAUTH_CLIENT_ID = "840023064617-am8kc1mj3sg1okermaohqevth8iu5mnt.apps.googleusercontent.com";
+export const OAUTH_CLIENT_ID = "241317652095-uus7cbiu45jfi2ll64ilb39vqsqjhg73.apps.googleusercontent.com";
 
 
 // Initialize Firebase
