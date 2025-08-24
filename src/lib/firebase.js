@@ -3,15 +3,15 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 // Your web app's Firebase configuration
-// IMPORTANT: Please replace this with your actual Firebase project configuration.
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCrTk09il9LyR0iIyQ_PMbQ62xC8tqJ0Xs",
+  authDomain: "accessguard-hnzrd.firebaseapp.com",
+  projectId: "accessguard-hnzrd",
+  storageBucket: "accessguard-hnzrd.firebasestorage.app",
+  messagingSenderId: "241317652095",
+  appId: "1:241317652095:web:60cf3637ae2b50db85414a"
 };
+
 
 // Initialize Firebase
 // A try-catch block is used to prevent the app from crashing if the config is invalid.
