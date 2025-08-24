@@ -64,20 +64,19 @@ export default function AccessDashboard({ user }) {
   const [isPickerLoading, setIsPickerLoading] = React.useState(false);
   
   const pickerInited = React.useRef(false);
-  let picker;
 
   React.useEffect(() => {
     const onGisLoad = () => setIsGisLoaded(true);
-    if (window.google?.accounts) {
-      onGisLoad();
-    } else {
-      const script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      script.onload = onGisLoad;
-      document.body.appendChild(script);
-    }
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = onGisLoad;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
   }, []);
 
   React.useEffect(() => {
@@ -91,21 +90,25 @@ export default function AccessDashboard({ user }) {
     }
   }, [isGisLoaded, user]);
   
-  const loadPickerApi = () => {
-    if (pickerInited.current) {
+  React.useEffect(() => {
+    const onPickerApiLoad = () => {
+      window.gapi.load('picker', () => {
+        pickerInited.current = true;
         setIsPickerApiLoaded(true);
-        return;
+      });
     }
     const script = document.createElement('script');
     script.src = 'https://apis.google.com/js/api.js';
     script.async = true;
     script.defer = true;
-    script.onload = () => window.gapi.load('picker', () => {
-        pickerInited.current = true;
-        setIsPickerApiLoaded(true);
-    });
+    script.onload = onPickerApiLoad;
     document.body.appendChild(script);
-  }
+
+    return () => {
+        document.body.removeChild(script);
+    }
+  }, []);
+
 
   const pickerCallback = (data) => {
     setIsPickerLoading(false);
@@ -149,7 +152,6 @@ export default function AccessDashboard({ user }) {
   
   const handleAuthClick = async () => {
     setIsPickerLoading(true);
-    loadPickerApi();
 
     if (tokenClient) {
         tokenClient.callback = (resp) => {
@@ -260,7 +262,7 @@ export default function AccessDashboard({ user }) {
     });
   };
 
-  const isDriveReady = isGisLoaded && user && tokenClient;
+  const isDriveReady = isGisLoaded && user && tokenClient && isPickerApiLoaded;
 
   return (
     <div className="container mx-auto p-0">
