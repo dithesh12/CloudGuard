@@ -16,6 +16,7 @@ import {
   Link as LinkIcon,
   Loader2,
   Copy,
+  EyeOff,
 } from "lucide-react";
 
 import { cn } from "../lib/utils";
@@ -44,6 +45,7 @@ import { TimePicker } from "./time-picker";
 import { OAUTH_CLIENT_ID, API_KEY } from "@/lib/firebase";
 import { updatePermissions } from "@/ai/flows/update-permissions-flow";
 import { auth } from "@/lib/firebase";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
 const initialUsers = [
   {
@@ -353,36 +355,56 @@ export default function AccessDashboard({ user }) {
                     <h3 className="text-lg font-medium">Add Users & Set Rules</h3>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Access Expires On</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                     <Popover open={isCalendarOpen} onOpenChange={handleCalendarOpenChange}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn( "justify-start text-left font-normal", !date && "text-muted-foreground")}
-                          disabled={!selectedFile}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {date ? format(date, "LLL dd, y") : <span>Pick a date</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          initialFocus
-                          mode="single"
-                          selected={date}
-                          onSelect={handleDateSelect}
-                          numberOfMonths={1}
-                          disabled={(day) => day < new Date(new Date().setHours(0,0,0,0))}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <div className="flex items-center gap-2">
-                       <Clock className="h-5 w-5 text-muted-foreground" />
-                       <TimePicker value={endTime} onChange={(val) => {setEndTime(val); setGeneratedLink(null);}} disabled={!selectedFile || !date} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Access Expires On</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Popover open={isCalendarOpen} onOpenChange={handleCalendarOpenChange}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={"outline"}
+                            className={cn( "w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
+                            disabled={!selectedFile}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {date ? format(date, "LLL dd, y") : <span>Pick a date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            initialFocus
+                            mode="single"
+                            selected={date}
+                            onSelect={handleDateSelect}
+                            numberOfMonths={1}
+                            disabled={(day) => day < new Date(new Date().setHours(0,0,0,0))}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-muted-foreground" />
+                        <TimePicker value={endTime} onChange={(val) => {setEndTime(val); setGeneratedLink(null);}} disabled={!selectedFile || !date} />
+                      </div>
                     </div>
                   </div>
+
+                   <div className="space-y-2">
+                      <Label>View Limit</Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger className="w-full text-left">
+                              <div className="flex items-center gap-2">
+                                <EyeOff className="h-5 w-5 text-muted-foreground" />
+                                <Input value="Unlimited" disabled className="cursor-not-allowed"/>
+                              </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>View limits are not supported by the Google Drive API.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+
                 </div>
 
                 <div>
@@ -448,5 +470,3 @@ export default function AccessDashboard({ user }) {
     </div>
   );
 }
-
-    
