@@ -3,7 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 // Your web app's Firebase configuration
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyCrTk09il9LyR0iIyQ_PMbQ62xC8tqJ0Xs",
   authDomain: "accessguard-hnzrd.firebaseapp.com",
   projectId: "accessguard-hnzrd",
