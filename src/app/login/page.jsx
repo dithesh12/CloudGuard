@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -12,12 +13,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ShieldCheck, Loader2 } from 'lucide-react';
+import { ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { auth, googleProvider } from '@/lib/firebase';
 import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const GoogleIcon = (props) => (
   <svg viewBox="0 0 48 48" {...props}>
@@ -35,15 +37,22 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/dashboard');
     } catch (error) {
       console.error("Firebase login error:", error);
+      if (error.code === 'auth/invalid-credential') {
+        setError('Invalid email or password. Please try again.');
+      } else {
+        setError(error.message);
+      }
       toast({
         title: "Login Failed",
         description: error.code === 'auth/invalid-credential' ? 'Invalid email or password.' : error.message,
@@ -56,6 +65,7 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
+    setError(null);
     try {
       await signInWithPopup(auth, googleProvider);
       router.push('/dashboard');
@@ -65,6 +75,7 @@ export default function LoginPage() {
       if (error.code === 'auth/account-exists-with-different-credential') {
         description = "An account with this email already exists. Please sign in with the method you originally used (e.g., password).";
       }
+      setError(description);
       toast({
         title: "Google Sign-In Failed",
         description: description,
@@ -101,6 +112,14 @@ export default function LoginPage() {
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={isLoading || isGoogleLoading}/>
             </div>
+             {error && (
+              <Alert variant="destructive" className="py-2 px-3">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  {error}
+                </AlertDescription>
+              </Alert>
+            )}
             <Button className="w-full" type="submit" disabled={isLoading || isGoogleLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sign In
