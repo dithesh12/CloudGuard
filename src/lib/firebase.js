@@ -12,6 +12,9 @@ export const firebaseConfig = {
   appId: "1:241317652095:web:60cf3637ae2b50db85414a"
 };
 
+// This is your OAuth 2.0 Client ID for the web application
+export const OAUTH_CLIENT_ID = "840023064617-am8kc1mj3sg1okermaohqevth8iu5mnt.apps.googleusercontent.com";
+
 
 // Initialize Firebase
 // A try-catch block is used to prevent the app from crashing if the config is invalid.
@@ -33,5 +36,3 @@ googleProvider.addScope('https://www.googleapis.com/auth/drive.file');
 
 
 export { app, auth, googleProvider };
-
-    

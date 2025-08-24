@@ -16,7 +16,7 @@ import {
   Link as LinkIcon,
   Loader2,
 } from "lucide-react";
-import { GoogleAuthProvider } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
@@ -41,11 +41,12 @@ import { UserAccessTable } from "./user-access-table";
 import { AddUserDialog } from "./add-user-dialog";
 import { useToast } from "../hooks/use-toast";
 import { TimePicker } from "./time-picker";
-import { auth, googleProvider, firebaseConfig } from "@/lib/firebase";
+import { auth, googleProvider, OAUTH_CLIENT_ID } from "@/lib/firebase";
 
 const initialUsers = [];
 
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file';
+const APP_ID = OAUTH_CLIENT_ID.split('-')[0];
 
 export default function AccessDashboard({ user }) {
   const { toast } = useToast();
@@ -59,11 +60,10 @@ export default function AccessDashboard({ user }) {
   const [isUserDialogOpen, setIsUserDialogOpen] = React.useState(false);
 
   const [isGisLoaded, setIsGisLoaded] = React.useState(false);
+  const [tokenClient, setTokenClient] = React.useState(null);
   const [isPickerApiLoaded, setIsPickerApiLoaded] = React.useState(false);
   const [isPickerLoading, setIsPickerLoading] = React.useState(false);
-  const [oauthToken, setOauthToken] = React.useState(null);
   
-  const tokenClient = React.useRef(null);
   const pickerInited = React.useRef(false);
 
   React.useEffect(() => {
@@ -82,34 +82,30 @@ export default function AccessDashboard({ user }) {
 
   React.useEffect(() => {
     if (isGisLoaded) {
-      tokenClient.current = window.google.accounts.oauth2.initTokenClient({
-          client_id: firebaseConfig.appId,
-          scope: SCOPES,
-          callback: '', // defined later
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: OAUTH_CLIENT_ID,
+        scope: SCOPES,
+        callback: '', // defined later
       });
+      setTokenClient(client);
     }
   }, [isGisLoaded]);
-
-  React.useEffect(() => {
-    if (oauthToken && !pickerInited.current) {
-        // load picker script
-        const script = document.createElement('script');
-        script.src = 'https://apis.google.com/js/api.js';
-        script.async = true;
-        script.defer = true;
-        script.onload = () => gapi.load('picker', () => setIsPickerApiLoaded(true));
-        document.body.appendChild(script);
+  
+  const loadPickerApi = () => {
+    if (pickerInited.current) {
+        setIsPickerApiLoaded(true);
+        return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://apis.google.com/js/api.js';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => window.gapi.load('picker', () => {
         pickerInited.current = true;
-    }
-  }, [oauthToken]);
-
-
-  React.useEffect(() => {
-    if (isPickerApiLoaded && oauthToken) {
-        createPicker(oauthToken);
-    }
-  }, [isPickerApiLoaded, oauthToken]);
-
+        setIsPickerApiLoaded(true);
+    });
+    document.body.appendChild(script);
+  }
 
   const pickerCallback = (data) => {
     setIsPickerLoading(false);
@@ -118,7 +114,7 @@ export default function AccessDashboard({ user }) {
       setSelectedFile({
         name: file.name,
         url: file.url,
-id: file.id,
+        id: file.id,
       });
        toast({
         title: "File Selected",
@@ -134,9 +130,10 @@ id: file.id,
   };
 
   const createPicker = (token) => {
+    if (!isPickerApiLoaded) return;
     const picker = new google.picker.PickerBuilder()
       .enableFeature(google.picker.Feature.NAV_HIDDEN)
-      .setAppId(firebaseConfig.appId)
+      .setAppId(APP_ID)
       .setOAuthToken(token)
       .setCallback(pickerCallback)
       .build();
@@ -146,21 +143,18 @@ id: file.id,
   
   const handleAuthClick = async () => {
     setIsPickerLoading(true);
-    if (tokenClient.current) {
-        tokenClient.current.callback = (resp) => {
+    loadPickerApi();
+
+    if (tokenClient) {
+        tokenClient.callback = (resp) => {
             if (resp.error !== undefined) {
                 setIsPickerLoading(false);
                 toast({ title: 'Authentication Error', description: 'Could not get access token for Google Drive.', variant: 'destructive'});
                 throw (resp);
             }
-            setOauthToken(resp.access_token);
+            createPicker(resp.access_token);
         };
-
-        if (oauthToken === null) {
-            tokenClient.current.requestAccessToken({prompt: 'consent'});
-        } else {
-            tokenClient.current.requestAccessToken({prompt: ''});
-        }
+        tokenClient.requestAccessToken({prompt: ''});
     } else {
       setIsPickerLoading(false);
       toast({ title: 'Initialization Error', description: 'Google authentication is not ready yet.', variant: 'destructive'});
@@ -260,7 +254,7 @@ id: file.id,
     });
   };
 
-  const isDriveReady = isGisLoaded && user;
+  const isDriveReady = isGisLoaded && user && tokenClient;
 
   return (
     <div className="container mx-auto p-0">
@@ -293,7 +287,7 @@ id: file.id,
                 ) : (
                   <FileText className="mr-2 h-4 w-4" />
                 )}
-                {isDriveReady ? 'Select from Google Drive' : 'Initializing...'}
+                {!isDriveReady ? 'Initializing...' : 'Select from Google Drive'}
               </Button>
             )}
           </div>
@@ -405,5 +399,3 @@ id: file.id,
     </div>
   );
 }
-
-    
