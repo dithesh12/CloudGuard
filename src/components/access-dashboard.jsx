@@ -14,6 +14,7 @@ import {
   Unplug,
   ShieldCheck,
   Link as LinkIcon,
+  Loader2,
 } from "lucide-react";
 
 import { cn } from "../lib/utils";
@@ -39,12 +40,13 @@ import { UserAccessTable } from "./user-access-table";
 import { AddUserDialog } from "./add-user-dialog";
 import { useToast } from "../hooks/use-toast";
 import { TimePicker } from "./time-picker";
+import { auth } from "@/lib/firebase";
 
 
 const initialUsers = [];
 
-const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 const CLIENT_ID = "840023064617-am8kc1mj3sg1okermaohqevth8iu5mnt.apps.googleusercontent.com";
+const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 const APP_ID = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
 
 
@@ -61,50 +63,22 @@ export default function AccessDashboard({ user }) {
 
   const [gapiLoaded, setGapiLoaded] = React.useState(false);
   const [gisLoaded, setGisLoaded] = React.useState(false);
-  const [tokenClient, setTokenClient] = React.useState(null);
+  const [isPickerLoading, setIsPickerLoading] = React.useState(false);
   
-  // Google Picker Logic
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
-        if(window.gapi) {
+        if (window.gapi) {
             window.gapi.load('picker', () => setGapiLoaded(true));
         }
-        setGisLoaded(!!window.google);
+        if (window.google) {
+            setGisLoaded(true);
+        }
     }
   }, []);
 
-  React.useEffect(() => {
-    if (gisLoaded && !tokenClient) {
-        const client = window.google.accounts.oauth2.initTokenClient({
-            client_id: CLIENT_ID,
-            scope: 'https://www.googleapis.com/auth/drive.readonly',
-            callback: (tokenResponse) => {
-              if (tokenResponse.access_token) {
-                createPicker(tokenResponse.access_token);
-              }
-            },
-          });
-          setTokenClient(client);
-    }
-  }, [gisLoaded, tokenClient]);
-
-
-  const handleAuthClick = () => {
-    if (!CLIENT_ID || !API_KEY) {
-        toast({
-            title: "Configuration Error",
-            description: "Google Drive API credentials are not configured.",
-            variant: "destructive",
-        });
-        return;
-    }
-    if (tokenClient) {
-      tokenClient.requestAccessToken({ prompt: '' });
-    }
-  };
-
   const createPicker = (accessToken) => {
-    if (!gapiLoaded) {
+    setIsPickerLoading(false);
+    if (!gapiLoaded || !gisLoaded) {
         toast({ title: "Error", description: "Google Picker API not loaded yet.", variant: "destructive"});
         return;
     }
@@ -119,6 +93,44 @@ export default function AccessDashboard({ user }) {
       .build();
     picker.setVisible(true);
   };
+
+  const handleAuthClick = async () => {
+    setIsPickerLoading(true);
+    if (!user || !auth.currentUser) {
+        toast({ title: "Not logged in", description: "Please log in to select a file.", variant: "destructive"});
+        setIsPickerLoading(false);
+        return;
+    }
+
+    try {
+        const tokenResult = await auth.currentUser.getIdTokenResult();
+        const accessToken = tokenResult.token;
+
+        if (window.google && window.google.accounts) {
+            const tokenClient = window.google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: 'https://www.googleapis.com/auth/drive.readonly',
+                callback: (tokenResponse) => {
+                    if (tokenResponse && tokenResponse.access_token) {
+                        createPicker(tokenResponse.access_token);
+                    } else {
+                        setIsPickerLoading(false);
+                        toast({ title: "Authentication Failed", description: "Could not get access token.", variant: "destructive"});
+                    }
+                },
+            });
+            tokenClient.requestAccessToken({ prompt: '' });
+        } else {
+            setIsPickerLoading(false);
+            toast({ title: "Error", description: "Google Identity Services not loaded.", variant: "destructive"});
+        }
+    } catch (error) {
+        setIsPickerLoading(false);
+        console.error("Error getting access token:", error);
+        toast({ title: "Error", description: "Could not get access token for Google Drive.", variant: "destructive"});
+    }
+  };
+
 
   const pickerCallback = (data) => {
     if (data.action === window.google.picker.Action.PICKED) {
@@ -255,8 +267,12 @@ export default function AccessDashboard({ user }) {
                 </Button>
               </div>
             ) : (
-               <Button variant="outline" size="sm" onClick={handleAuthClick} disabled={!gapiLoaded || !gisLoaded || !user} className="w-full sm:w-auto">
-                <FileText className="mr-2 h-4 w-4" />
+               <Button variant="outline" size="sm" onClick={handleAuthClick} disabled={!gapiLoaded || !gisLoaded || !user || isPickerLoading} className="w-full sm:w-auto">
+                {isPickerLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <FileText className="mr-2 h-4 w-4" />
+                )}
                 Select from Google Drive
               </Button>
             )}
