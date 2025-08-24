@@ -2,6 +2,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { Inter } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider';
+import Script from 'next/script';
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -22,6 +23,7 @@ export default function RootLayout({ children }) {
           {children}
           <Toaster />
         </ThemeProvider>
+        <Script src="https://apis.google.com/js/api.js" async defer />
       </body>
     </html>
   );
