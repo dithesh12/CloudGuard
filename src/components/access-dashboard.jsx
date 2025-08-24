@@ -141,7 +141,7 @@ export default function AccessDashboard({ user }) {
   };
 
   const createPicker = (token) => {
-    if (!isPickerApiLoaded) {
+    if (!isPickerApiLoaded || !window.google?.picker) {
       setIsPickerLoading(false);
       toast({ title: 'Error', description: 'Picker API is not loaded yet.', variant: 'destructive'});
       return;
