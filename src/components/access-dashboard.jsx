@@ -16,7 +16,7 @@ import {
   Link as LinkIcon,
   Loader2,
 } from "lucide-react";
-import { signInWithPopup, GoogleAuthProvider, getAdditionalUserInfo, reauthenticateWithPopup } from "firebase/auth";
+import { reauthenticateWithPopup } from "firebase/auth";
 
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
@@ -61,24 +61,25 @@ export default function AccessDashboard({ user }) {
   const [editingUser, setEditingUser] = React.useState(null);
   const [isUserDialogOpen, setIsUserDialogOpen] = React.useState(false);
 
-  const [gapiLoaded, setGapiLoaded] = React.useState(false);
-  const [gisLoaded, setGisLoaded] = React.useState(false);
+  const [isApiLoaded, setIsApiLoaded] = React.useState(false);
   const [isPickerLoading, setIsPickerLoading] = React.useState(false);
   
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-        if (window.gapi) {
-            window.gapi.load('picker', () => setGapiLoaded(true));
-        }
-        if (window.google?.accounts?.id) {
-            setGisLoaded(true);
-        }
-    }
+    const checkApi = () => {
+      if (window.gapi && window.google) {
+        window.gapi.load('picker', () => {
+          setIsApiLoaded(true);
+        });
+      } else {
+        setTimeout(checkApi, 100);
+      }
+    };
+    checkApi();
   }, []);
 
   const createPicker = (accessToken) => {
     setIsPickerLoading(false);
-    if (!gapiLoaded || !gisLoaded || !user) {
+    if (!isApiLoaded || !user) {
         toast({ title: "Error", description: "Google Picker API cannot be loaded.", variant: "destructive"});
         return;
     }
@@ -108,7 +109,7 @@ export default function AccessDashboard({ user }) {
 
     try {
       const result = await reauthenticateWithPopup(auth.currentUser, googleProvider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const credential = result.credential;
 
       if (credential && credential.accessToken) {
         createPicker(credential.accessToken);
@@ -267,7 +268,7 @@ export default function AccessDashboard({ user }) {
                 </Button>
               </div>
             ) : (
-               <Button variant="outline" size="sm" onClick={handleAuthClick} disabled={!gapiLoaded || !gisLoaded || !user || isPickerLoading} className="w-full sm:w-auto">
+               <Button variant="outline" size="sm" onClick={handleAuthClick} disabled={!isApiLoaded || !user || isPickerLoading} className="w-full sm:w-auto">
                 {isPickerLoading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
