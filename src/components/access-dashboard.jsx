@@ -66,54 +66,15 @@ export default function AccessDashboard({ user }) {
   const [editingUser, setEditingUser] = React.useState(null);
   const [isUserDialogOpen, setIsUserDialogOpen] = React.useState(false);
 
-  const [isDriveReady, setIsDriveReady] = React.useState(false);
+  const [gapiLoaded, setGapiLoaded] = React.useState(false);
+  const [gisLoaded, setGisLoaded] = React.useState(false);
+  const [pickerApiLoaded, setPickerApiLoaded] = React.useState(false);
   const [isPickerLoading, setIsPickerLoading] = React.useState(false);
   const tokenClient = React.useRef(null);
+  
+  const isDriveReady = gapiLoaded && gisLoaded && pickerApiLoaded;
 
-  React.useEffect(() => {
-    const gisScript = document.createElement('script');
-    gisScript.src = 'https://accounts.google.com/gsi/client';
-    gisScript.async = true;
-    gisScript.defer = true;
-    gisScript.onload = () => {
-      if (window.google?.accounts?.oauth2) {
-        tokenClient.current = window.google.accounts.oauth2.initTokenClient({
-          client_id: OAUTH_CLIENT_ID,
-          scope: SCOPES,
-          callback: (tokenResponse) => {
-            if (tokenResponse && tokenResponse.access_token) {
-              createPicker(tokenResponse.access_token);
-            } else {
-              setIsPickerLoading(false);
-              toast({ title: 'Authentication Error', description: 'Failed to get access token.', variant: 'destructive'});
-            }
-          },
-        });
-        checkGapiReady();
-      }
-    };
-    document.body.appendChild(gisScript);
-
-    const gapiScript = document.createElement('script');
-    gapiScript.src = 'https://apis.google.com/js/api.js';
-    gapiScript.async = true;
-    gapiScript.defer = true;
-    gapiScript.onload = () => window.gapi.load('picker', checkGapiReady);
-    document.body.appendChild(gapiScript);
-
-    return () => {
-      document.body.removeChild(gisScript);
-      document.body.removeChild(gapiScript);
-    }
-  }, []);
-
-  const checkGapiReady = () => {
-    if (window.gapi?.picker && tokenClient.current) {
-        setIsDriveReady(true);
-    }
-  }
-
-  const pickerCallback = (data) => {
+  const pickerCallback = React.useCallback((data) => {
     setIsPickerLoading(false);
     if (data.action === google.picker.Action.PICKED) {
       const file = data.docs[0];
@@ -133,9 +94,9 @@ export default function AccessDashboard({ user }) {
         variant: "default"
       });
     }
-  };
+  }, [toast]);
 
-  const createPicker = (token) => {
+  const createPicker = React.useCallback((token) => {
     if (!isDriveReady) {
       toast({ title: 'Error', description: 'Picker API is not loaded yet.', variant: 'destructive'});
       setIsPickerLoading(false);
@@ -151,9 +112,53 @@ export default function AccessDashboard({ user }) {
       .build();
       
     picker.setVisible(true);
-  };
-  
+  }, [isDriveReady, pickerCallback, toast]);
+
+  React.useEffect(() => {
+    const gapiScript = document.createElement('script');
+    gapiScript.src = 'https://apis.google.com/js/api.js';
+    gapiScript.async = true;
+    gapiScript.defer = true;
+    gapiScript.onload = () => {
+      setGapiLoaded(true);
+      window.gapi.load('picker', () => setPickerApiLoaded(true));
+    }
+    document.body.appendChild(gapiScript);
+    return () => document.body.removeChild(gapiScript);
+  }, []);
+
+  React.useEffect(() => {
+    if (!gapiLoaded) return;
+    const gisScript = document.createElement('script');
+    gisScript.src = 'https://accounts.google.com/gsi/client';
+    gisScript.async = true;
+    gisScript.defer = true;
+    gisScript.onload = () => {
+      setGisLoaded(true);
+      if (window.google?.accounts?.oauth2) {
+        tokenClient.current = window.google.accounts.oauth2.initTokenClient({
+          client_id: OAUTH_CLIENT_ID,
+          scope: SCOPES,
+          callback: (tokenResponse) => {
+            if (tokenResponse && tokenResponse.access_token) {
+              createPicker(tokenResponse.access_token);
+            } else {
+              setIsPickerLoading(false);
+              toast({ title: 'Authentication Error', description: 'Failed to get access token.', variant: 'destructive'});
+            }
+          },
+        });
+      }
+    };
+    document.body.appendChild(gisScript);
+    return () => document.body.removeChild(gisScript);
+  }, [gapiLoaded, createPicker, toast]);
+
   const handleAuthClick = async () => {
+    if (!isDriveReady || !window.gapi?.picker) {
+      toast({ title: 'Error', description: 'Picker API is not loaded yet.', variant: 'destructive'});
+      return;
+    }
     setIsPickerLoading(true);
     if (tokenClient.current) {
         tokenClient.current.requestAccessToken({prompt: 'consent'});
@@ -399,3 +404,5 @@ export default function AccessDashboard({ user }) {
     </div>
   );
 }
+
+    
