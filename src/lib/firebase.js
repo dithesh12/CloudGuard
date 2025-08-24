@@ -31,4 +31,4 @@ const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope('https://www.googleapis.com/auth/drive.readonly');
 
 
-export { app, auth, googleProvider };
+export { app, auth, googleProvider, firebaseConfig };

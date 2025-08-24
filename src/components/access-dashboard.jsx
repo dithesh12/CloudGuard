@@ -76,20 +76,43 @@ export default function AccessDashboard({ user }) {
     checkApi();
   }, []);
 
-  const createPicker = (accessToken) => {
+  const pickerCallback = (data) => {
     setIsPickerLoading(false);
+    if (data.action === window.google.picker.Action.PICKED) {
+      const file = data.docs[0];
+      setSelectedFile({
+        name: file.name,
+        url: file.url,
+        id: file.id,
+      });
+       toast({
+        title: "File Selected",
+        description: `Now managing access for ${file.name}.`,
+      });
+    } else if (data.action === window.google.picker.Action.CANCEL) {
+       toast({
+        title: "Selection Cancelled",
+        description: `You can select a file at any time.`,
+        variant: "default"
+      });
+    }
+  };
+
+  const createPicker = (accessToken) => {
     if (!isApiLoaded || !user) {
         toast({ title: "Error", description: "Google Picker API cannot be loaded.", variant: "destructive"});
         return;
     }
     const view = new window.google.picker.View(window.google.picker.ViewId.DOCS);
     view.setMimeTypes("image/png,image/jpeg,image/jpg,application/pdf");
+    
     const picker = new window.google.picker.PickerBuilder()
       .enableFeature(window.google.picker.Feature.NAV_HIDDEN)
       .setAppId(APP_ID)
       .setOAuthToken(accessToken)
       .setCallback(pickerCallback)
       .build();
+      
     picker.setVisible(true);
   };
 
@@ -113,37 +136,17 @@ export default function AccessDashboard({ user }) {
       if (accessToken) {
         createPicker(accessToken);
       } else {
-        setIsPickerLoading(false);
-        toast({
-          title: 'Authentication Failed',
-          description: 'Could not get access token for Google Drive.',
-          variant: 'destructive',
-        });
+        throw new Error("Could not get access token for Google Drive.");
       }
     } catch (error) {
-      setIsPickerLoading(false);
-      console.error('Error getting access token:', error);
+      console.error('Error during Google authentication or picker creation:', error);
       toast({
         title: 'Authentication Failed',
-        description: 'Could not get access token for Google Drive.',
+        description: error.message || 'Could not get access token for Google Drive.',
         variant: 'destructive',
       });
-    }
-  };
-
-
-  const pickerCallback = (data) => {
-    if (data.action === window.google.picker.Action.PICKED) {
-      const file = data.docs[0];
-      setSelectedFile({
-        name: file.name,
-        url: file.url,
-        id: file.id,
-      });
-       toast({
-        title: "File Selected",
-        description: `Now managing access for ${file.name}.`,
-      });
+    } finally {
+        setIsPickerLoading(false);
     }
   };
 
