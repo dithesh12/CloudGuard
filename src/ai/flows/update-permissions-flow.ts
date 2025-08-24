@@ -10,7 +10,7 @@
 
 import { ai } from '@/ai/genkit';
 import { getDrive } from '@/ai/google';
-import { z } from 'genkit/zod';
+import { z } from 'zod';
 import {
   GoogleAuth,
 } from 'google-auth-library';
