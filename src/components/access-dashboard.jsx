@@ -64,14 +64,13 @@ export default function AccessDashboard({ user }) {
   const [gapiLoaded, setGapiLoaded] = React.useState(false);
   const [gisLoaded, setGisLoaded] = React.useState(false);
   const [isPickerLoading, setIsPickerLoading] = React.useState(false);
-  const [tokenClient, setTokenClient] = React.useState(null);
   
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
         if (window.gapi) {
             window.gapi.load('picker', () => setGapiLoaded(true));
         }
-        if (window.google) {
+        if (window.google?.accounts?.id) {
             setGisLoaded(true);
         }
     }
