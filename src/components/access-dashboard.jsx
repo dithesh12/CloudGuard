@@ -66,53 +66,52 @@ export default function AccessDashboard({ user }) {
   const [editingUser, setEditingUser] = React.useState(null);
   const [isUserDialogOpen, setIsUserDialogOpen] = React.useState(false);
 
-  const [isGisLoaded, setIsGisLoaded] = React.useState(false);
-  const [tokenClient, setTokenClient] = React.useState(null);
-  const [isPickerApiLoaded, setIsPickerApiLoaded] = React.useState(false);
+  const [isDriveReady, setIsDriveReady] = React.useState(false);
   const [isPickerLoading, setIsPickerLoading] = React.useState(false);
+  const tokenClient = React.useRef(null);
 
   React.useEffect(() => {
-    const onGisLoad = () => setIsGisLoaded(true);
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.onload = onGisLoad;
-    document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
+    const gisScript = document.createElement('script');
+    gisScript.src = 'https://accounts.google.com/gsi/client';
+    gisScript.async = true;
+    gisScript.defer = true;
+    gisScript.onload = () => {
+      if (window.google?.accounts?.oauth2) {
+        tokenClient.current = window.google.accounts.oauth2.initTokenClient({
+          client_id: OAUTH_CLIENT_ID,
+          scope: SCOPES,
+          callback: (tokenResponse) => {
+            if (tokenResponse && tokenResponse.access_token) {
+              createPicker(tokenResponse.access_token);
+            } else {
+              setIsPickerLoading(false);
+              toast({ title: 'Authentication Error', description: 'Failed to get access token.', variant: 'destructive'});
+            }
+          },
+        });
+        checkGapiReady();
+      }
     };
-  }, []);
+    document.body.appendChild(gisScript);
 
-  React.useEffect(() => {
-    if (isGisLoaded && user && window.google) {
-      const client = window.google.accounts.oauth2.initTokenClient({
-        client_id: OAUTH_CLIENT_ID,
-        scope: SCOPES,
-        callback: '', // defined later
-      });
-      setTokenClient(client);
-    }
-  }, [isGisLoaded, user]);
-  
-  React.useEffect(() => {
-    const onPickerApiLoad = () => {
-      window.gapi.load('picker', () => {
-        setIsPickerApiLoaded(true);
-      });
-    }
-    const script = document.createElement('script');
-    script.src = 'https://apis.google.com/js/api.js';
-    script.async = true;
-    script.defer = true;
-    script.onload = onPickerApiLoad;
-    document.body.appendChild(script);
+    const gapiScript = document.createElement('script');
+    gapiScript.src = 'https://apis.google.com/js/api.js';
+    gapiScript.async = true;
+    gapiScript.defer = true;
+    gapiScript.onload = () => window.gapi.load('picker', checkGapiReady);
+    document.body.appendChild(gapiScript);
 
     return () => {
-        document.body.removeChild(script);
+      document.body.removeChild(gisScript);
+      document.body.removeChild(gapiScript);
     }
   }, []);
+
+  const checkGapiReady = () => {
+    if (window.gapi?.picker && tokenClient.current) {
+        setIsDriveReady(true);
+    }
+  }
 
   const pickerCallback = (data) => {
     setIsPickerLoading(false);
@@ -137,9 +136,9 @@ export default function AccessDashboard({ user }) {
   };
 
   const createPicker = (token) => {
-    if (!isPickerApiLoaded || !window.google?.picker) {
-      setIsPickerLoading(false);
+    if (!isDriveReady) {
       toast({ title: 'Error', description: 'Picker API is not loaded yet.', variant: 'destructive'});
+      setIsPickerLoading(false);
       return;
     };
 
@@ -156,17 +155,8 @@ export default function AccessDashboard({ user }) {
   
   const handleAuthClick = async () => {
     setIsPickerLoading(true);
-
-    if (tokenClient) {
-        tokenClient.callback = (resp) => {
-            if (resp.error !== undefined) {
-                setIsPickerLoading(false);
-                toast({ title: 'Authentication Error', description: 'Could not get access token for Google Drive.', variant: 'destructive'});
-                throw (resp);
-            }
-            createPicker(resp.access_token);
-        };
-        tokenClient.requestAccessToken({prompt: 'consent'});
+    if (tokenClient.current) {
+        tokenClient.current.requestAccessToken({prompt: 'consent'});
     } else {
       setIsPickerLoading(false);
       toast({ title: 'Initialization Error', description: 'Google authentication is not ready yet.', variant: 'destructive'});
@@ -265,8 +255,6 @@ export default function AccessDashboard({ user }) {
       description: "All access settings have been reset to their defaults.",
     });
   };
-
-  const isDriveReady = isGisLoaded && user && tokenClient && isPickerApiLoaded;
 
   return (
     <div className="container mx-auto p-0">
@@ -411,5 +399,3 @@ export default function AccessDashboard({ user }) {
     </div>
   );
 }
-
-    
