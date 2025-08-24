@@ -356,7 +356,7 @@ export default function AccessDashboard({ user }) {
                 
                 <div className="space-y-2">
                     <Label>Access Timeframe</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <Popover open={isCalendarOpen} onOpenChange={handleCalendarOpenChange}>
                             <PopoverTrigger asChild>
                               <Button
