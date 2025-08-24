@@ -59,7 +59,7 @@ export default function AccessDashboard({ user }) {
   const [editingUser, setEditingUser] = React.useState(null);
   const [isUserDialogOpen, setIsUserDialogOpen] = React.useState(false);
 
-  const [isApiLoaded, setIsApiLoaded] = React.useState(false);
+  const [isGapiLoaded, setIsGapiLoaded] = React.useState(false);
   const [isPickerLoading, setIsPickerLoading] = React.useState(false);
   const [oauthToken, setOauthToken] = React.useState(null);
   
@@ -67,7 +67,7 @@ export default function AccessDashboard({ user }) {
     // Load the Google Picker API script
     const onApiLoad = () => {
       gapi.load('picker', () => {
-        setIsApiLoaded(true);
+        setIsGapiLoaded(true);
       });
     }
     window.onApiLoad = onApiLoad;
@@ -95,8 +95,8 @@ export default function AccessDashboard({ user }) {
     }
   };
 
-  const createPicker = () => {
-    if (!isApiLoaded || !user || !oauthToken) {
+  const createPicker = React.useCallback((token) => {
+    if (!isGapiLoaded || !user || !token) {
         toast({ title: "Error", description: "Google Picker cannot be created. Missing token or API.", variant: "destructive"});
         setIsPickerLoading(false);
         return;
@@ -107,20 +107,13 @@ export default function AccessDashboard({ user }) {
     const picker = new google.picker.PickerBuilder()
       .enableFeature(google.picker.Feature.NAV_HIDDEN)
       .setAppId(APP_ID)
-      .setOAuthToken(oauthToken)
+      .setOAuthToken(token)
       .setDeveloperKey(API_KEY)
       .setCallback(pickerCallback)
       .build();
       
     picker.setVisible(true);
-  };
-
-  React.useEffect(() => {
-    if (isPickerLoading && oauthToken) {
-        createPicker();
-    }
-  }, [isPickerLoading, oauthToken]);
-
+  }, [isGapiLoaded, user, toast]);
 
   const handleAuthClick = async () => {
     setIsPickerLoading(true);
@@ -139,6 +132,7 @@ export default function AccessDashboard({ user }) {
       const credential = GoogleAuthProvider.credentialFromResult(result);
       if (credential?.accessToken) {
         setOauthToken(credential.accessToken);
+        createPicker(credential.accessToken);
       } else {
         throw new Error("Could not get access token from Google.");
       }
@@ -273,7 +267,7 @@ export default function AccessDashboard({ user }) {
                 </Button>
               </div>
             ) : (
-               <Button variant="outline" size="sm" onClick={handleAuthClick} disabled={!isApiLoaded || !user || isPickerLoading} className="w-full sm:w-auto">
+               <Button variant="outline" size="sm" onClick={handleAuthClick} disabled={!isGapiLoaded || !user || isPickerLoading} className="w-full sm:w-auto">
                 {isPickerLoading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
