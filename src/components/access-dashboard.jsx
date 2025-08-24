@@ -40,12 +40,11 @@ import { UserAccessTable } from "./user-access-table";
 import { AddUserDialog } from "./add-user-dialog";
 import { useToast } from "../hooks/use-toast";
 import { TimePicker } from "./time-picker";
-import { auth } from "@/lib/firebase";
+import { auth, googleProvider } from "@/lib/firebase";
 
 
 const initialUsers = [];
 
-const CLIENT_ID = "840023064617-am8kc1mj3sg1okermaohqevth8iu5mnt.apps.googleusercontent.com";
 const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 const APP_ID = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
 
@@ -78,8 +77,8 @@ export default function AccessDashboard({ user }) {
 
   const createPicker = (accessToken) => {
     setIsPickerLoading(false);
-    if (!gapiLoaded || !gisLoaded) {
-        toast({ title: "Error", description: "Google Picker API not loaded yet.", variant: "destructive"});
+    if (!gapiLoaded || !gisLoaded || !user) {
+        toast({ title: "Error", description: "Google Picker API cannot be loaded.", variant: "destructive"});
         return;
     }
     const view = new window.google.picker.View(window.google.picker.ViewId.DOCS);
@@ -103,31 +102,22 @@ export default function AccessDashboard({ user }) {
     }
 
     try {
-        const tokenResult = await auth.currentUser.getIdTokenResult();
-        const accessToken = tokenResult.token;
-
-        if (window.google && window.google.accounts) {
-            const tokenClient = window.google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: 'https://www.googleapis.com/auth/drive.readonly',
-                callback: (tokenResponse) => {
-                    if (tokenResponse && tokenResponse.access_token) {
-                        createPicker(tokenResponse.access_token);
-                    } else {
-                        setIsPickerLoading(false);
-                        toast({ title: "Authentication Failed", description: "Could not get access token.", variant: "destructive"});
-                    }
-                },
-            });
-            tokenClient.requestAccessToken({ prompt: '' });
+        // Re-authenticate to get a fresh access token with the correct scope
+        const { user: refreshedUser } = await auth.currentUser.linkWithPopup(googleProvider);
+        const tokenResult = await refreshedUser.getIdTokenResult();
+        const credential = googleProvider.credentialFromResult({user: refreshedUser});
+        
+        if (credential && credential.accessToken) {
+            createPicker(credential.accessToken);
         } else {
-            setIsPickerLoading(false);
-            toast({ title: "Error", description: "Google Identity Services not loaded.", variant: "destructive"});
+             setIsPickerLoading(false);
+             toast({ title: "Authentication Failed", description: "Could not get access token.", variant: "destructive"});
         }
+
     } catch (error) {
         setIsPickerLoading(false);
         console.error("Error getting access token:", error);
-        toast({ title: "Error", description: "Could not get access token for Google Drive.", variant: "destructive"});
+        toast({ title: "Error", description: "Could not get access token for Google Drive. Please try signing in again.", variant: "destructive"});
     }
   };
 
