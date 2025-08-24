@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect } from "react";
@@ -13,8 +14,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogClose,
 } from "./ui/dialog";
 import {
   Form,
@@ -37,7 +36,6 @@ import { UserPlus, Edit } from "lucide-react";
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
   accessLevel: z.enum(["Viewer", "Commenter", "Editor"]),
-  priority: z.coerce.number().int().min(1, { message: "Priority must be 1 or higher." }),
 });
 
 export function AddUserDialog({ children, onSave, isOpen, setIsOpen, editingUser, setEditingUser }) {
@@ -46,7 +44,6 @@ export function AddUserDialog({ children, onSave, isOpen, setIsOpen, editingUser
     defaultValues: {
       email: "",
       accessLevel: "Viewer",
-      priority: 1,
     },
   });
 
@@ -57,15 +54,13 @@ export function AddUserDialog({ children, onSave, isOpen, setIsOpen, editingUser
       form.reset({
         email: "",
         accessLevel: "Viewer",
-        priority: 1,
       });
     }
-  }, [editingUser, form]);
+  }, [editingUser, form, isOpen]);
   
   const handleOpenChange = (open) => {
     setIsOpen(open);
     if (!open) {
-      form.reset();
       setEditingUser(null);
     }
   }
@@ -83,7 +78,7 @@ export function AddUserDialog({ children, onSave, isOpen, setIsOpen, editingUser
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit User' : 'Add User'}</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update the details for this user.' : 'Invite a user and set their access priority and level.'}
+            {isEditing ? 'Update the details for this user.' : 'Invite a user and set their access level.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -123,19 +118,6 @@ export function AddUserDialog({ children, onSave, isOpen, setIsOpen, editingUser
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="priority"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Priority</FormLabel>
-                  <FormControl>
-                    <Input type="number" min="1" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <DialogFooter>
                <Button type="submit">
                   {isEditing ? (
@@ -155,3 +137,5 @@ export function AddUserDialog({ children, onSave, isOpen, setIsOpen, editingUser
     </Dialog>
   );
 }
+
+    

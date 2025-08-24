@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -40,9 +41,8 @@ export function UserAccessTable({ users, onRemoveUser, onEditUser }) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="min-w-[250px] w-[40%] sm:w-auto">User</TableHead>
+            <TableHead className="min-w-[250px] w-[60%] sm:w-auto">User</TableHead>
             <TableHead>Access Level</TableHead>
-            <TableHead>Priority</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -65,7 +65,6 @@ export function UserAccessTable({ users, onRemoveUser, onEditUser }) {
                 <TableCell>
                   <Badge variant={getBadgeVariant(user.accessLevel)}>{user.accessLevel}</Badge>
                 </TableCell>
-                <TableCell>{user.priority}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -92,8 +91,8 @@ export function UserAccessTable({ users, onRemoveUser, onEditUser }) {
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={4} className="h-24 text-center">
-                No users with access.
+              <TableCell colSpan={3} className="h-24 text-center">
+                No users added.
               </TableCell>
             </TableRow>
           )}
@@ -102,3 +101,5 @@ export function UserAccessTable({ users, onRemoveUser, onEditUser }) {
     </div>
   );
 }
+
+    

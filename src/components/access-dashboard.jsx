@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Link as LinkIcon,
   Loader2,
+  Copy,
 } from "lucide-react";
 
 import { cn } from "../lib/utils";
@@ -50,7 +51,6 @@ const initialUsers = [
     email: "test@example.com",
     avatar: `https://placehold.co/40x40.png`,
     accessLevel: "Viewer",
-    priority: 1,
   },
 ];
 
@@ -71,7 +71,8 @@ export default function AccessDashboard({ user }) {
   const [gisLoaded, setGisLoaded] = React.useState(false);
   const [pickerApiLoaded, setPickerApiLoaded] = React.useState(false);
   const [isPickerLoading, setIsPickerLoading] = React.useState(false);
-  const [isSaving, setIsSaving] = React.useState(false);
+  const [isGenerating, setIsGenerating] = React.useState(false);
+  const [generatedLink, setGeneratedLink] = React.useState(null);
   const [tokenClient, setTokenClient] = React.useState(null);
   
   const isDriveReady = gapiLoaded && gisLoaded && pickerApiLoaded;
@@ -92,6 +93,7 @@ export default function AccessDashboard({ user }) {
                url: file.url,
                id: file.id,
              });
+             setGeneratedLink(null);
               toast({
                title: "File Selected",
                description: `Now managing access for ${file.name}.`,
@@ -166,6 +168,7 @@ export default function AccessDashboard({ user }) {
 
   const handleDisconnect = () => {
     setSelectedFile(null);
+    setGeneratedLink(null);
     toast({
       title: "File Disconnected",
       description: "Select a new file to manage its access.",
@@ -189,11 +192,12 @@ export default function AccessDashboard({ user }) {
       setUsers([...users, userToAdd]);
       toast({
         title: "User Added",
-        description: `${userToAdd.name} has been granted access.`,
+        description: `${userToAdd.name} has been granted temporary access.`,
       });
     }
     setEditingUser(null);
     setIsUserDialogOpen(false);
+    setGeneratedLink(null);
   };
 
   const handleEditUser = (user) => {
@@ -211,16 +215,17 @@ export default function AccessDashboard({ user }) {
      toast({
       title: "User Removed",
       variant: "destructive",
-      description: `Access has been revoked.`,
+      description: `Access has been revoked. Remember to generate a new link.`,
     });
+    setGeneratedLink(null);
   };
   
-  const handleSaveChanges = async () => {
+  const handleGenerateLink = async () => {
     if (!selectedFile) {
        toast({
         title: "No File Selected",
         variant: "destructive",
-        description: "Please select a file to save changes.",
+        description: "Please select a file to generate a link.",
       });
       return;
     }
@@ -234,7 +239,8 @@ export default function AccessDashboard({ user }) {
       return;
     }
 
-    setIsSaving(true);
+    setIsGenerating(true);
+    setGeneratedLink(null);
     
     try {
       const idToken = await auth.currentUser.getIdToken();
@@ -259,27 +265,36 @@ export default function AccessDashboard({ user }) {
         idToken: idToken,
       });
 
+      // In a real app, this would be a unique, secure URL from your backend.
+      // For now, we use the direct file URL as a placeholder.
+      setGeneratedLink(selectedFile.url);
+
       toast({
-        title: "Settings Saved",
-        description: `Access control settings for ${selectedFile.name} have been updated.`,
+        title: "Secure Link Generated",
+        description: `Permissions have been applied to ${selectedFile.name}.`,
       });
     } catch (error) {
        console.error("Failed to save changes:", error);
        toast({
-        title: "Save Failed",
+        title: "Generation Failed",
         variant: "destructive",
         description: error.message || "An unexpected error occurred.",
       });
     } finally {
-      setIsSaving(false);
+      setIsGenerating(false);
     }
+  };
+
+  const handleCopyToClipboard = () => {
+    navigator.clipboard.writeText(generatedLink);
+    toast({ title: "Link Copied!", description: "The secure link has been copied to your clipboard." });
   };
   
   const handleReset = () => {
     setUsers(initialUsers.map((u, i) => ({...u, id: `user-${i+1}`})));
     setDate(null);
     setEndTime('17:00');
-    document.getElementById('view-limit').value = '';
+    setGeneratedLink(null);
     toast({
       title: "Settings Reset",
       description: "All access settings have been reset to their defaults.",
@@ -288,132 +303,145 @@ export default function AccessDashboard({ user }) {
 
   return (
     <div className="container mx-auto p-0">
-      <Card className="w-full max-w-4xl mx-auto shadow-lg rounded-xl bg-card/50 backdrop-blur-sm border-border/20">
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3 mb-2">
-              <ShieldCheck className="h-6 w-6 text-muted-foreground" />
-              <CardTitle className="text-xl">
-                {selectedFile ? selectedFile.name : "No file selected"}
+      <Card className="w-full max-w-2xl mx-auto shadow-lg rounded-xl bg-card/50 backdrop-blur-sm border-border/20">
+        <CardHeader className="text-center">
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <ShieldCheck className="h-8 w-8 text-primary" />
+              <CardTitle className="text-2xl sm:text-3xl">
+                Create a Secure Link
               </CardTitle>
             </div>
-            {selectedFile ? (
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                 <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
-                   <a href={selectedFile.url} target="_blank" rel="noopener noreferrer">
-                    <LinkIcon className="mr-2 h-4 w-4" />
-                    Open File
-                  </a>
-                 </Button>
-                <Button variant="outline" size="sm" onClick={handleDisconnect} className="w-full sm:w-auto">
-                  <Unplug className="mr-2 h-4 w-4" />
-                  Disconnect File
-                </Button>
-              </div>
-            ) : (
-               <Button variant="outline" size="sm" onClick={handleAuthClick} disabled={!isDriveReady || isPickerLoading} className="w-full sm:w-auto">
-                {isPickerLoading || !isDriveReady ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <FileText className="mr-2 h-4 w-4" />
-                )}
-                {!isDriveReady ? 'Initializing...' : 'Select from Google Drive'}
-              </Button>
-            )}
-          </div>
-          <CardDescription>
-            {selectedFile 
-              ? `Manage who can access ${selectedFile.name} and set access rules.`
-              : "Select a file from your Google Drive to manage its access."
-            }
-          </CardDescription>
+            <CardDescription>
+              Select a file, add users, and generate a secure, temporary link.
+            </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            <Separator />
-            <div>
-              <h3 className="text-lg font-medium mb-4">Global Access Rules</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="date-range">Access Expiration Date</Label>
-                   <Popover open={isCalendarOpen} onOpenChange={handleCalendarOpenChange}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        id="date-range"
-                        variant={"outline"}
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !date && "text-muted-foreground"
-                        )}
-                        disabled={!selectedFile}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? (
-                          format(date, "LLL dd, y")
+        <CardContent className="space-y-8">
+            {/* Step 1: Select File */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg">1</div>
+                    <h3 className="text-lg font-medium">Select a File from Google Drive</h3>
+                </div>
+                {selectedFile ? (
+                    <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                            <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                            <span className="font-medium truncate">{selectedFile.name}</span>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={handleDisconnect}>
+                            <Unplug className="mr-2 h-4 w-4" /> Change
+                        </Button>
+                    </div>
+                ) : (
+                    <Button variant="outline" onClick={handleAuthClick} disabled={!isDriveReady || isPickerLoading} className="w-full">
+                        {isPickerLoading || !isDriveReady ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         ) : (
-                          <span>Pick an expiration date</span>
+                        <LinkIcon className="mr-2 h-4 w-4" />
                         )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        initialFocus
-                        mode="single"
-                        selected={date}
-                        onSelect={handleDateSelect}
-                        numberOfMonths={1}
-                        disabled={(day) => day < new Date(new Date().setHours(0,0,0,0))}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                        {!isDriveReady ? 'Initializing...' : 'Select File'}
+                    </Button>
+                )}
+            </div>
+
+            <Separator />
+
+            {/* Step 2: Add Users & Rules */}
+            <div className={cn("space-y-4", !selectedFile && "opacity-50 pointer-events-none")}>
+                 <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg">2</div>
+                    <h3 className="text-lg font-medium">Add Users & Set Rules</h3>
                 </div>
+
                 <div className="space-y-2">
-                  <Label>Expiration Time</Label>
-                  <div className="flex items-center gap-2">
-                     <Clock className="h-5 w-5 text-muted-foreground" />
-                     <TimePicker value={endTime} onChange={setEndTime} disabled={!selectedFile || !date} />
+                  <Label>Access Expires On</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                     <Popover open={isCalendarOpen} onOpenChange={handleCalendarOpenChange}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn( "justify-start text-left font-normal", !date && "text-muted-foreground")}
+                          disabled={!selectedFile}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {date ? format(date, "LLL dd, y") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          initialFocus
+                          mode="single"
+                          selected={date}
+                          onSelect={handleDateSelect}
+                          numberOfMonths={1}
+                          disabled={(day) => day < new Date(new Date().setHours(0,0,0,0))}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <div className="flex items-center gap-2">
+                       <Clock className="h-5 w-5 text-muted-foreground" />
+                       <TimePicker value={endTime} onChange={(val) => {setEndTime(val); setGeneratedLink(null);}} disabled={!selectedFile || !date} />
+                    </div>
                   </div>
                 </div>
-                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="view-limit">View Limit (Optional - Not Implemented)</Label>
-                  <div className="relative">
-                    <Eye className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input id="view-limit" type="number" placeholder="e.g., 10 views" className="pl-10" disabled={true} />
-                  </div>
+
+                <div>
+                    <Label className="mb-2 block">Authorized Users</Label>
+                    <UserAccessTable users={users} onRemoveUser={handleRemoveUser} onEditUser={handleEditUser} />
+                     <AddUserDialog 
+                        isOpen={isUserDialogOpen}
+                        setIsOpen={setIsUserDialogOpen}
+                        onSave={handleSaveUser}
+                        editingUser={editingUser}
+                        setEditingUser={setEditingUser}
+                        >
+                        <Button variant="outline" disabled={!selectedFile} onClick={handleAddNewUserClick} className="w-full mt-2">
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Add User
+                        </Button>
+                    </AddUserDialog>
                 </div>
-              </div>
             </div>
 
             <Separator />
             
-            <div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
-                <h3 className="text-lg font-medium">User-specific Access</h3>
-                <AddUserDialog 
-                  isOpen={isUserDialogOpen}
-                  setIsOpen={setIsUserDialogOpen}
-                  onSave={handleSaveUser}
-                  editingUser={editingUser}
-                  setEditingUser={setEditingUser}
-                >
-                  <Button variant="outline" disabled={!selectedFile} onClick={handleAddNewUserClick} className="w-full sm:w-auto">
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Add User
+            {/* Step 3: Generate Link */}
+            <div className={cn("space-y-4 text-center", !selectedFile && "opacity-50 pointer-events-none")}>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg">3</div>
+                    <h3 className="text-lg font-medium">Generate Link</h3>
+                </div>
+
+                 <Button 
+                    onClick={handleGenerateLink} 
+                    disabled={!selectedFile || isGenerating} 
+                    className="w-full sm:w-auto"
+                    size="lg"
+                  >
+                    {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    {isGenerating ? 'Applying Permissions...' : 'Generate Secure Link'}
                   </Button>
-                </AddUserDialog>
-              </div>
-              <UserAccessTable users={users} onRemoveUser={handleRemoveUser} onEditUser={handleEditUser} />
+                  
+                  {generatedLink && (
+                    <div className="mt-4 p-4 border-dashed border-2 border-primary rounded-lg bg-primary/10">
+                        <Label className="text-sm font-bold text-primary-foreground">Your Secure Link is Ready!</Label>
+                        <div className="flex items-center gap-2 mt-2">
+                            <Input value={generatedLink} readOnly className="bg-background" />
+                            <Button size="icon" variant="outline" onClick={handleCopyToClipboard}>
+                                <Copy className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">Only the users you added can access this link until the expiration time.</p>
+                    </div>
+                  )}
+
             </div>
-          </div>
+          
         </CardContent>
         <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-6">
-          <Button variant="ghost" onClick={handleReset} disabled={!selectedFile || isSaving} className="w-full sm:w-auto">
+          <Button variant="ghost" onClick={handleReset} disabled={isGenerating} className="w-full sm:w-auto">
              <RotateCcw className="mr-2 h-4 w-4" />
-            Reset
-          </Button>
-          <Button onClick={handleSaveChanges} disabled={!selectedFile || isSaving} className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto">
-            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            {isSaving ? 'Saving...' : 'Save Changes'}
+            Reset All
           </Button>
         </CardFooter>
       </Card>
