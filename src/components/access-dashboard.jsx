@@ -17,6 +17,7 @@ import {
   Loader2,
   Copy,
   EyeOff,
+  HelpCircle,
 } from "lucide-react";
 
 import { cn } from "../lib/utils";
@@ -46,6 +47,7 @@ import { OAUTH_CLIENT_ID, API_KEY } from "@/lib/firebase";
 import { updatePermissions } from "@/ai/flows/update-permissions-flow";
 import { auth } from "@/lib/firebase";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { Slider } from "./ui/slider";
 
 const initialUsers = [];
 
@@ -302,7 +304,7 @@ export default function AccessDashboard({ user }) {
 
   return (
     <div className="container mx-auto p-0">
-      <Card className="w-full max-w-2xl mx-auto shadow-lg rounded-xl bg-card/50 backdrop-blur-sm border-border/20">
+      <Card className="w-full max-w-3xl mx-auto shadow-lg rounded-xl bg-card/50 backdrop-blur-sm border-border/20">
         <CardHeader className="text-center">
             <div className="flex items-center justify-center gap-3 mb-2">
               <ShieldCheck className="h-8 w-8 text-primary" />
@@ -311,7 +313,7 @@ export default function AccessDashboard({ user }) {
               </CardTitle>
             </div>
             <CardDescription>
-              Select a file, add users, and generate a secure, temporary link.
+              Select a file, add users, set rules, and generate a secure, temporary link.
             </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
@@ -319,26 +321,26 @@ export default function AccessDashboard({ user }) {
             <div className="space-y-4">
                 <div className="flex items-center gap-3">
                     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg">1</div>
-                    <h3 className="text-lg font-medium">Select a File from Google Drive</h3>
+                    <h3 className="text-xl font-semibold">Select a File</h3>
                 </div>
                 {selectedFile ? (
-                    <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                            <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                            <span className="font-medium truncate">{selectedFile.name}</span>
+                    <div className="flex items-center justify-between p-3 pl-4 rounded-lg border bg-muted/30">
+                        <div className="flex items-center gap-4 overflow-hidden">
+                            <FileText className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                            <span className="font-medium truncate text-base">{selectedFile.name}</span>
                         </div>
                         <Button variant="outline" size="sm" onClick={handleDisconnect}>
-                            <Unplug className="mr-2 h-4 w-4" /> Change
+                            <Unplug className="mr-2 h-4 w-4" /> Change File
                         </Button>
                     </div>
                 ) : (
-                    <Button variant="outline" onClick={handleAuthClick} disabled={!isDriveReady || isPickerLoading} className="w-full">
+                    <Button variant="outline" onClick={handleAuthClick} disabled={!isDriveReady || isPickerLoading} className="w-full py-6 text-base">
                         {isPickerLoading || !isDriveReady ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                         ) : (
-                        <LinkIcon className="mr-2 h-4 w-4" />
+                        <LinkIcon className="mr-2 h-5 w-5" />
                         )}
-                        {!isDriveReady ? 'Initializing...' : 'Select File'}
+                        {!isDriveReady ? 'Initializing Google Drive...' : 'Select a File from Google Drive'}
                     </Button>
                 )}
             </div>
@@ -346,105 +348,129 @@ export default function AccessDashboard({ user }) {
             <Separator />
 
             {/* Step 2: Add Users & Rules */}
-            <div className={cn("space-y-4", !selectedFile && "opacity-50 pointer-events-none")}>
+            <div className={cn("space-y-6", !selectedFile && "opacity-50 pointer-events-none")}>
                  <div className="flex items-center gap-3">
                     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg">2</div>
-                    <h3 className="text-lg font-medium">Add Users & Set Rules</h3>
+                    <h3 className="text-xl font-semibold">Set Access Rules</h3>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Access Window</Label>
-                     <Popover open={isCalendarOpen} onOpenChange={handleCalendarOpenChange}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="date"
-                            variant={"outline"}
-                            className={cn( "w-full justify-start text-left font-normal", !dateRange?.from && "text-muted-foreground"
-                            )}
-                            disabled={!selectedFile}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dateRange?.from ? (
-                              dateRange.to ? (
-                                <>
-                                  {format(dateRange.from, "LLL dd, y")} -{" "}
-                                  {format(dateRange.to, "LLL dd, y")}
-                                </>
-                              ) : (
-                                format(dateRange.from, "LLL dd, y")
-                              )
-                            ) : (
-                              <span>Pick a date range</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            initialFocus
-                            mode="range"
-                            defaultMonth={dateRange?.from}
-                            selected={dateRange}
-                            onSelect={handleDateSelect}
-                            numberOfMonths={2}
-                            disabled={(day) => day < new Date(new Date().setDate(new Date().getDate() - 1))}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                  </div>
-
-                   <div className="space-y-2">
-                      <Label>Time Window</Label>
-                      <div className="flex items-center gap-2">
-                         <TimePicker value={startTime} onChange={(val) => {setStartTime(val); setGeneratedLink(null);}} disabled={!selectedFile || !dateRange?.from} />
-                         <span>-</span>
-                         <TimePicker value={endTime} onChange={(val) => {setEndTime(val); setGeneratedLink(null);}} disabled={!selectedFile || !dateRange?.from} />
-                      </div>
+                
+                <div className="space-y-2">
+                    <Label>Access Timeframe</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Popover open={isCalendarOpen} onOpenChange={handleCalendarOpenChange}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                id="date"
+                                variant={"outline"}
+                                className={cn( "w-full justify-start text-left font-normal h-11", !dateRange?.from && "text-muted-foreground"
+                                )}
+                                disabled={!selectedFile}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {dateRange?.from ? (
+                                  dateRange.to ? (
+                                    <>
+                                      {format(dateRange.from, "MMM d, yyyy")} -{" "}
+                                      {format(dateRange.to, "MMM d, yyyy")}
+                                    </>
+                                  ) : (
+                                    format(dateRange.from, "MMM d, yyyy")
+                                  )
+                                ) : (
+                                  <span>Pick a date range</span>
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                initialFocus
+                                mode="range"
+                                defaultMonth={dateRange?.from}
+                                selected={dateRange}
+                                onSelect={handleDateSelect}
+                                numberOfMonths={2}
+                                disabled={(day) => day < new Date(new Date().setDate(new Date().getDate() - 1))}
+                              />
+                            </PopoverContent>
+                        </Popover>
+                        <div className="flex items-center gap-2">
+                            <TimePicker value={startTime} onChange={(val) => {setStartTime(val); setGeneratedLink(null);}} disabled={!selectedFile || !dateRange?.from} />
+                            <span className="text-muted-foreground">-</span>
+                            <TimePicker value={endTime} onChange={(val) => {setEndTime(val); setGeneratedLink(null);}} disabled={!selectedFile || !dateRange?.from} />
+                        </div>
                     </div>
                 </div>
 
-                <div>
-                    <Label className="mb-2 block">Authorized Users</Label>
-                    <UserAccessTable users={users} onRemoveUser={handleRemoveUser} onEditUser={handleEditUser} />
-                     <AddUserDialog 
-                        isOpen={isUserDialogOpen}
-                        setIsOpen={setIsUserDialogOpen}
-                        onSave={handleSaveUser}
-                        editingUser={editingUser}
-                        setEditingUser={setEditingUser}
-                        >
-                        <Button variant="outline" disabled={!selectedFile} onClick={handleAddNewUserClick} className="w-full mt-2">
-                            <UserPlus className="mr-2 h-4 w-4" />
-                            Add User
-                        </Button>
-                    </AddUserDialog>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Authorized Users</Label>
+                    <Button variant="outline" size="sm" disabled={!selectedFile} onClick={handleAddNewUserClick}>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Add User
+                    </Button>
+                  </div>
+                  <UserAccessTable users={users} onRemoveUser={handleRemoveUser} onEditUser={handleEditUser} />
+                   <AddUserDialog 
+                      isOpen={isUserDialogOpen}
+                      setIsOpen={setIsUserDialogOpen}
+                      onSave={handleSaveUser}
+                      editingUser={editingUser}
+                      setEditingUser={setEditingUser}
+                  />
                 </div>
+                 <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                        <Label htmlFor="view-limit">View Limit</Label>
+                        <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger type="button">
+                                <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>This feature is not yet available. <br/> View limits require a backend database to track.</p>
+                            </TooltipContent>
+                        </Tooltip>
+                        </TooltipProvider>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <Slider
+                            id="view-limit"
+                            defaultValue={[1]}
+                            max={100}
+                            step={1}
+                            disabled
+                            className={cn("w-full")}
+                        />
+                         <span className="text-sm font-medium text-muted-foreground w-20 text-center">Unlimited</span>
+                    </div>
+                </div>
+
             </div>
 
             <Separator />
             
             {/* Step 3: Generate Link */}
             <div className={cn("space-y-4 text-center", !selectedFile && "opacity-50 pointer-events-none")}>
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center justify-center gap-3 mb-4">
                     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg">3</div>
-                    <h3 className="text-lg font-medium">Generate Link</h3>
+                    <h3 className="text-xl font-semibold">Generate Your Secure Link</h3>
                 </div>
 
                  <Button 
                     onClick={handleGenerateLink} 
-                    disabled={!selectedFile || isGenerating} 
+                    disabled={!selectedFile || isGenerating || users.length === 0} 
                     className="w-full sm:w-auto"
                     size="lg"
                   >
-                    {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    {isGenerating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
                     {isGenerating ? 'Applying Permissions...' : 'Generate Secure Link'}
                   </Button>
                   
                   {generatedLink && (
-                    <div className="mt-4 p-4 border-dashed border-2 border-primary rounded-lg bg-primary/10">
-                        <Label className="text-sm font-bold text-primary-foreground">Your Secure Link is Ready!</Label>
+                    <div className="mt-6 p-4 border-dashed border-2 border-primary rounded-lg bg-primary/10">
+                        <Label className="text-sm font-bold text-primary">Your Secure Link is Ready!</Label>
                         <div className="flex items-center gap-2 mt-2">
-                            <Input value={generatedLink} readOnly className="bg-background" />
+                            <Input value={generatedLink} readOnly className="bg-background text-base" />
                             <Button size="icon" variant="outline" onClick={handleCopyToClipboard}>
                                 <Copy className="h-4 w-4" />
                             </Button>
@@ -456,8 +482,11 @@ export default function AccessDashboard({ user }) {
             </div>
           
         </CardContent>
-        <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-6">
-          <Button variant="ghost" onClick={handleReset} disabled={isGenerating} className="w-full sm:w-auto">
+        <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-6 border-t mt-4">
+           <p className="text-xs text-muted-foreground">
+             Found an issue? <a href="#" className="underline">Report a bug</a>.
+           </p>
+           <Button variant="ghost" onClick={handleReset} disabled={isGenerating}>
              <RotateCcw className="mr-2 h-4 w-4" />
             Reset All
           </Button>
@@ -466,5 +495,3 @@ export default function AccessDashboard({ user }) {
     </div>
   );
 }
-
-    

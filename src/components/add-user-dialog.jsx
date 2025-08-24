@@ -14,7 +14,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "./ui/dialog";
 import {
   Form,
@@ -39,7 +38,7 @@ const formSchema = z.object({
   accessLevel: z.enum(["Viewer", "Commenter", "Editor"]),
 });
 
-export function AddUserDialog({ children, onSave, isOpen, setIsOpen, editingUser, setEditingUser }) {
+export function AddUserDialog({ onSave, isOpen, setIsOpen, editingUser, setEditingUser, children }) {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -74,12 +73,12 @@ export function AddUserDialog({ children, onSave, isOpen, setIsOpen, editingUser
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+      {children}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit User' : 'Add User'}</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit User Access' : 'Add New User'}</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update the details for this user.' : 'Invite a user and set their access level.'}
+            {isEditing ? 'Update the details for this user.' : 'Invite a new user and set their access level.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -89,9 +88,9 @@ export function AddUserDialog({ children, onSave, isOpen, setIsOpen, editingUser
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>User Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="teammate@company.com" {...field} />
+                    <Input placeholder="teammate@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -110,9 +109,9 @@ export function AddUserDialog({ children, onSave, isOpen, setIsOpen, editingUser
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Viewer">Viewer</SelectItem>
-                      <SelectItem value="Commenter">Commenter</SelectItem>
-                      <SelectItem value="Editor">Editor</SelectItem>
+                      <SelectItem value="Viewer">Viewer (Can view)</SelectItem>
+                      <SelectItem value="Commenter">Commenter (Can view and comment)</SelectItem>
+                      <SelectItem value="Editor">Editor (Can view, comment and edit)</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
