@@ -46,7 +46,6 @@ import { auth, googleProvider, firebaseConfig } from "@/lib/firebase";
 
 const initialUsers = [];
 
-const API_KEY = firebaseConfig.apiKey;
 const APP_ID = firebaseConfig.appId;
 
 
@@ -89,7 +88,6 @@ export default function AccessDashboard({ user }) {
       .enableFeature(window.google.picker.Feature.NAV_HIDDEN)
       .setAppId(APP_ID)
       .setOAuthToken(accessToken)
-      .setDeveloperKey(API_KEY)
       .setCallback(pickerCallback)
       .build();
     picker.setVisible(true);
