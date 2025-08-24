@@ -44,7 +44,7 @@ import { TimePicker } from "./time-picker";
 const initialUsers = [];
 
 const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+const CLIENT_ID = "840023064617-am8kc1mj3sg1okermaohqevth8iu5mnt.apps.googleusercontent.com";
 const APP_ID = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
 
 
@@ -66,7 +66,9 @@ export default function AccessDashboard({ user }) {
   // Google Picker Logic
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
-        setGapiLoaded(!!window.gapi);
+        if(window.gapi) {
+            window.gapi.load('picker', () => setGapiLoaded(true));
+        }
         setGisLoaded(!!window.google);
     }
   }, []);
@@ -97,11 +99,15 @@ export default function AccessDashboard({ user }) {
         return;
     }
     if (tokenClient) {
-      tokenClient.requestAccessToken();
+      tokenClient.requestAccessToken({ prompt: '' });
     }
   };
 
   const createPicker = (accessToken) => {
+    if (!gapiLoaded) {
+        toast({ title: "Error", description: "Google Picker API not loaded yet.", variant: "destructive"});
+        return;
+    }
     const view = new window.google.picker.View(window.google.picker.ViewId.DOCS);
     view.setMimeTypes("image/png,image/jpeg,image/jpg,application/pdf");
     const picker = new window.google.picker.PickerBuilder()
@@ -363,5 +369,3 @@ export default function AccessDashboard({ user }) {
     </div>
   );
 }
-
-    
