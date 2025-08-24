@@ -356,7 +356,7 @@ export default function AccessDashboard({ user }) {
                 
                 <div className="space-y-2">
                     <Label>Access Timeframe</Label>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4">
                         <Popover open={isCalendarOpen} onOpenChange={handleCalendarOpenChange}>
                             <PopoverTrigger asChild>
                               <Button
@@ -482,10 +482,7 @@ export default function AccessDashboard({ user }) {
             </div>
           
         </CardContent>
-        <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-6 border-t mt-4">
-           <p className="text-xs text-muted-foreground">
-             Found an issue? <a href="#" className="underline">Report a bug</a>.
-           </p>
+        <CardFooter className="flex justify-end items-center pt-6 border-t mt-4">
            <Button variant="ghost" onClick={handleReset} disabled={isGenerating}>
              <RotateCcw className="mr-2 h-4 w-4" />
             Reset All
