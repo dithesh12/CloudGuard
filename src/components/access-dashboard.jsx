@@ -16,7 +16,6 @@ import {
   Link as LinkIcon,
   Loader2,
 } from "lucide-react";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
@@ -41,7 +40,7 @@ import { UserAccessTable } from "./user-access-table";
 import { AddUserDialog } from "./add-user-dialog";
 import { useToast } from "../hooks/use-toast";
 import { TimePicker } from "./time-picker";
-import { auth, googleProvider, OAUTH_CLIENT_ID } from "@/lib/firebase";
+import { OAUTH_CLIENT_ID } from "@/lib/firebase";
 
 const initialUsers = [];
 
