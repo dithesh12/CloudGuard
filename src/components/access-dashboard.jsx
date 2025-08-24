@@ -60,8 +60,7 @@ const APP_ID = OAUTH_CLIENT_ID.split('-')[0];
 export default function AccessDashboard({ user }) {
   const { toast } = useToast();
   const [date, setDate] = React.useState();
-  const [startTime, setStartTime] = React.useState('09');
-  const [endTime, setEndTime] = React.useState('17');
+  const [endTime, setEndTime] = React.useState('17:00');
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
   const [users, setUsers] = React.useState(() => initialUsers.map((u, i) => ({...u, id: `user-${i+1}`})));
   const [selectedFile, setSelectedFile] = React.useState(null);
@@ -120,8 +119,8 @@ export default function AccessDashboard({ user }) {
     gapiScript.async = true;
     gapiScript.defer = true;
     gapiScript.onload = () => {
-      setGapiLoaded(true);
       window.gapi.load('picker', () => setPickerApiLoaded(true));
+      setGapiLoaded(true);
     }
     document.body.appendChild(gapiScript);
     return () => document.body.removeChild(gapiScript);
@@ -158,15 +157,10 @@ export default function AccessDashboard({ user }) {
 
   const handleDateSelect = (selectedDate) => {
     setDate(selectedDate);
-    if (selectedDate?.from && selectedDate?.to) {
-      setIsCalendarOpen(false);
-    }
+    setIsCalendarOpen(false);
   };
   
   const handleCalendarOpenChange = (open) => {
-    if (open) {
-      window.scrollBy({ top: 300, behavior: 'smooth' });
-    }
     setIsCalendarOpen(open);
   };
 
@@ -244,11 +238,18 @@ export default function AccessDashboard({ user }) {
     
     try {
       const idToken = await auth.currentUser.getIdToken();
-      const expirationDate = date?.to ? date.to.toISOString() : undefined;
+      
+      let expirationDate;
+      if (date) {
+        const [hours, minutes] = endTime.split(':');
+        const finalDate = new Date(date);
+        finalDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+        expirationDate = finalDate.toISOString();
+      }
       
       const permissionsToSet = users.map(u => ({
         email: u.email,
-        role: u.accessLevel, // Pass the UI role directly e.g. "Editor"
+        role: u.accessLevel,
       }));
 
       await updatePermissions({
@@ -277,8 +278,7 @@ export default function AccessDashboard({ user }) {
   const handleReset = () => {
     setUsers(initialUsers.map((u, i) => ({...u, id: `user-${i+1}`})));
     setDate(null);
-    setStartTime('09');
-    setEndTime('17');
+    setEndTime('17:00');
     document.getElementById('view-limit').value = '';
     toast({
       title: "Settings Reset",
@@ -335,44 +335,43 @@ export default function AccessDashboard({ user }) {
               <h3 className="text-lg font-medium mb-4">Global Access Rules</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="date-range">Access Expiration</Label>
-                  <Popover open={isCalendarOpen} onOpenChange={handleCalendarOpenChange}>
+                  <Label htmlFor="date-range">Access Expiration Date</Label>
+                   <Popover open={isCalendarOpen} onOpenChange={handleCalendarOpenChange}>
                     <PopoverTrigger asChild>
                       <Button
                         id="date-range"
                         variant={"outline"}
                         className={cn(
                           "w-full justify-start text-left font-normal",
-                          !date?.to && "text-muted-foreground"
+                          !date && "text-muted-foreground"
                         )}
                         disabled={!selectedFile}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date?.to ? (
-                          format(date.to, "LLL dd, y")
+                        {date ? (
+                          format(date, "LLL dd, y")
                         ) : (
                           <span>Pick an expiration date</span>
                         )}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start" side="bottom">
+                    <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         initialFocus
                         mode="single"
-                        selected={date?.to}
-                        onSelect={(day) => setDate({ from: date?.from, to: day })}
+                        selected={date}
+                        onSelect={handleDateSelect}
                         numberOfMonths={1}
+                        disabled={(day) => day < new Date(new Date().setHours(0,0,0,0))}
                       />
                     </PopoverContent>
                   </Popover>
                 </div>
                 <div className="space-y-2">
-                  <Label>Time Window (Optional - Not Implemented)</Label>
+                  <Label>Expiration Time</Label>
                   <div className="flex items-center gap-2">
                      <Clock className="h-5 w-5 text-muted-foreground" />
-                     <TimePicker value={startTime} onChange={setStartTime} disabled={true} />
-                    <span className="text-muted-foreground">-</span>
-                    <TimePicker value={endTime} onChange={setEndTime} disabled={true} />
+                     <TimePicker value={endTime} onChange={setEndTime} disabled={!selectedFile || !date} />
                   </div>
                 </div>
                  <div className="space-y-2 md:col-span-2">
@@ -421,3 +420,5 @@ export default function AccessDashboard({ user }) {
     </div>
   );
 }
+
+    
