@@ -24,7 +24,7 @@ export default function RootLayout({ children }) {
           <Toaster />
         </ThemeProvider>
         <Script src="https://accounts.google.com/gsi/client" strategy="lazyOnload"></Script>
-        <Script src="https://apis.google.com/js/api.js" strategy="lazyOnload"></Script>
+        <Script src="https://apis.google.com/js/api.js?onload=onApiLoad" strategy="lazyOnload"></Script>
       </body>
     </html>
   );

@@ -43,11 +43,10 @@ import { useToast } from "../hooks/use-toast";
 import { TimePicker } from "./time-picker";
 import { auth, googleProvider, firebaseConfig } from "@/lib/firebase";
 
-
 const initialUsers = [];
 
+const API_KEY = firebaseConfig.apiKey;
 const APP_ID = firebaseConfig.appId;
-
 
 export default function AccessDashboard({ user }) {
   const { toast } = useToast();
@@ -62,23 +61,21 @@ export default function AccessDashboard({ user }) {
 
   const [isApiLoaded, setIsApiLoaded] = React.useState(false);
   const [isPickerLoading, setIsPickerLoading] = React.useState(false);
+  const [oauthToken, setOauthToken] = React.useState(null);
   
   React.useEffect(() => {
-    const checkApi = () => {
-      if (window.gapi && window.google) {
-        window.gapi.load('picker', () => {
-          setIsApiLoaded(true);
-        });
-      } else {
-        setTimeout(checkApi, 100);
-      }
-    };
-    checkApi();
+    // Load the Google Picker API script
+    const onApiLoad = () => {
+      gapi.load('picker', () => {
+        setIsApiLoaded(true);
+      });
+    }
+    window.onApiLoad = onApiLoad;
   }, []);
 
   const pickerCallback = (data) => {
     setIsPickerLoading(false);
-    if (data.action === window.google.picker.Action.PICKED) {
+    if (data.action === google.picker.Action.PICKED) {
       const file = data.docs[0];
       setSelectedFile({
         name: file.name,
@@ -89,7 +86,7 @@ export default function AccessDashboard({ user }) {
         title: "File Selected",
         description: `Now managing access for ${file.name}.`,
       });
-    } else if (data.action === window.google.picker.Action.CANCEL) {
+    } else if (data.action === google.picker.Action.CANCEL) {
        toast({
         title: "Selection Cancelled",
         description: `You can select a file at any time.`,
@@ -98,27 +95,36 @@ export default function AccessDashboard({ user }) {
     }
   };
 
-  const createPicker = (accessToken) => {
-    if (!isApiLoaded || !user) {
-        toast({ title: "Error", description: "Google Picker API cannot be loaded.", variant: "destructive"});
+  const createPicker = () => {
+    if (!isApiLoaded || !user || !oauthToken) {
+        toast({ title: "Error", description: "Google Picker cannot be created. Missing token or API.", variant: "destructive"});
+        setIsPickerLoading(false);
         return;
     }
-    const view = new window.google.picker.View(window.google.picker.ViewId.DOCS);
+    const view = new google.picker.View(google.picker.ViewId.DOCS);
     view.setMimeTypes("image/png,image/jpeg,image/jpg,application/pdf");
     
-    const picker = new window.google.picker.PickerBuilder()
-      .enableFeature(window.google.picker.Feature.NAV_HIDDEN)
+    const picker = new google.picker.PickerBuilder()
+      .enableFeature(google.picker.Feature.NAV_HIDDEN)
       .setAppId(APP_ID)
-      .setOAuthToken(accessToken)
+      .setOAuthToken(oauthToken)
+      .setDeveloperKey(API_KEY)
       .setCallback(pickerCallback)
       .build();
       
     picker.setVisible(true);
   };
 
+  React.useEffect(() => {
+    if (isPickerLoading && oauthToken) {
+        createPicker();
+    }
+  }, [isPickerLoading, oauthToken]);
+
+
   const handleAuthClick = async () => {
     setIsPickerLoading(true);
-    if (!user || !auth.currentUser) {
+    if (!user) {
       toast({
         title: 'Not logged in',
         description: 'Please log in to select a file.',
@@ -131,22 +137,19 @@ export default function AccessDashboard({ user }) {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
-      const accessToken = credential.accessToken;
-
-      if (accessToken) {
-        createPicker(accessToken);
+      if (credential?.accessToken) {
+        setOauthToken(credential.accessToken);
       } else {
-        throw new Error("Could not get access token for Google Drive.");
+        throw new Error("Could not get access token from Google.");
       }
     } catch (error) {
-      console.error('Error during Google authentication or picker creation:', error);
+      console.error('Error during Google authentication:', error);
       toast({
         title: 'Authentication Failed',
-        description: error.message || 'Could not get access token for Google Drive.',
+        description: error.message || 'An unknown error occurred during authentication.',
         variant: 'destructive',
       });
-    } finally {
-        setIsPickerLoading(false);
+      setIsPickerLoading(false);
     }
   };
 
