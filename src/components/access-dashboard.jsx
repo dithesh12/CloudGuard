@@ -70,8 +70,6 @@ export default function AccessDashboard({ user }) {
   const [tokenClient, setTokenClient] = React.useState(null);
   const [isPickerApiLoaded, setIsPickerApiLoaded] = React.useState(false);
   const [isPickerLoading, setIsPickerLoading] = React.useState(false);
-  
-  const pickerInited = React.useRef(false);
 
   React.useEffect(() => {
     const onGisLoad = () => setIsGisLoaded(true);
@@ -88,7 +86,7 @@ export default function AccessDashboard({ user }) {
   }, []);
 
   React.useEffect(() => {
-    if (isGisLoaded && user) {
+    if (isGisLoaded && user && window.google) {
       const client = window.google.accounts.oauth2.initTokenClient({
         client_id: OAUTH_CLIENT_ID,
         scope: SCOPES,
@@ -101,7 +99,6 @@ export default function AccessDashboard({ user }) {
   React.useEffect(() => {
     const onPickerApiLoad = () => {
       window.gapi.load('picker', () => {
-        pickerInited.current = true;
         setIsPickerApiLoaded(true);
       });
     }
@@ -116,7 +113,6 @@ export default function AccessDashboard({ user }) {
         document.body.removeChild(script);
     }
   }, []);
-
 
   const pickerCallback = (data) => {
     setIsPickerLoading(false);
@@ -415,3 +411,5 @@ export default function AccessDashboard({ user }) {
     </div>
   );
 }
+
+    
