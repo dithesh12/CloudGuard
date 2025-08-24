@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A Genkit flow for updating permissions on a Google Drive file.
@@ -54,12 +55,12 @@ const updatePermissionsFlow = ai.defineFlow(
     inputSchema: UpdatePermissionsInputSchema,
     outputSchema: UpdatePermissionsOutputSchema,
     auth: (auth, input) => {
-        const authPolicy = async (auth, input) => {
-            if (!input.idToken) {
+        const authPolicy = async (policyAuth, policyInput) => {
+            if (!policyInput.idToken) {
                 throw new Error("No idToken provided");
             }
-            const auth = new GoogleAuth();
-            const client = await auth.verifyIdToken({idToken: input.idToken});
+            const googleAuth = new GoogleAuth();
+            const client = await googleAuth.verifyIdToken({idToken: policyInput.idToken});
             if (!client.getPayload()) {
                 throw new Error("Invalid ID token");
             }
