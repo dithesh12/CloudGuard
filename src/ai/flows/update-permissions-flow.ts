@@ -4,46 +4,19 @@
  * @fileOverview A Genkit flow for updating permissions on a Google Drive file.
  *
  * - updatePermissions - A function that manages file permissions.
- * - UpdatePermissionsInput - The input type for the updatePermissions function.
- * - UpdatePermissionsOutput - The return type for the updatePermissions function.
  */
 
 import { ai } from '@/ai/genkit';
 import { getDrive } from '@/ai/google';
-import { z } from 'zod';
-import {
-  GoogleAuth,
-} from 'google-auth-library';
+import { UpdatePermissionsInputSchema, UpdatePermissionsOutputSchema, type UpdatePermissionsInput, type UpdatePermissionsOutput } from '@/lib/types';
+import { GoogleAuth } from 'google-auth-library';
 
-const UIRoleSchema = z.enum(['Viewer', 'Commenter', 'Editor']);
-type UIRole = z.infer<typeof UIRoleSchema>;
 
-// Mapping from user-friendly UI role to Google Drive API role
-const roleMapping: Record<UIRole, 'viewer' | 'commenter' | 'writer'> = {
+const roleMapping: Record<'Viewer' | 'Commenter' | 'Editor', 'viewer' | 'commenter' | 'writer'> = {
   'Viewer': 'viewer',
   'Commenter': 'commenter',
   'Editor': 'writer',
 };
-
-
-const PermissionSchema = z.object({
-  email: z.string().email(),
-  role: UIRoleSchema,
-});
-
-export const UpdatePermissionsInputSchema = z.object({
-  fileId: z.string().describe('The ID of the Google Drive file to update.'),
-  permissions: z.array(PermissionSchema).describe('The list of permissions to apply.'),
-  expirationDate: z.string().optional().describe('An ISO 8601 date string for when the permissions should expire.'),
-  idToken: z.string().describe('The Firebase Auth ID token of the user making the request.'),
-});
-export type UpdatePermissionsInput = z.infer<typeof UpdatePermissionsInputSchema>;
-
-export const UpdatePermissionsOutputSchema = z.object({
-  success: z.boolean(),
-  message: z.string(),
-});
-export type UpdatePermissionsOutput = z.infer<typeof UpdatePermissionsOutputSchema>;
 
 export async function updatePermissions(input: UpdatePermissionsInput): Promise<UpdatePermissionsOutput> {
   return updatePermissionsFlow(input);
@@ -55,7 +28,7 @@ const updatePermissionsFlow = ai.defineFlow(
     inputSchema: UpdatePermissionsInputSchema,
     outputSchema: UpdatePermissionsOutputSchema,
     auth: (auth, input) => {
-        const authPolicy = async (policyAuth, policyInput) => {
+        const authPolicy = async (policyAuth: any, policyInput: any) => {
             if (!policyInput.idToken) {
                 throw new Error("No idToken provided");
             }
