@@ -23,7 +23,6 @@ export default function RootLayout({ children }) {
           {children}
           <Toaster />
         </ThemeProvider>
-        <Script src="https://apis.google.com/js/api.js" async defer />
       </body>
     </html>
   );
