@@ -41,13 +41,13 @@ import { UserAccessTable } from "./user-access-table";
 import { AddUserDialog } from "./add-user-dialog";
 import { useToast } from "../hooks/use-toast";
 import { TimePicker } from "./time-picker";
-import { auth, googleProvider } from "@/lib/firebase";
+import { auth, googleProvider, app } from "@/lib/firebase";
 
 
 const initialUsers = [];
 
-const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-const APP_ID = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
+const API_KEY = app.options.apiKey;
+const APP_ID = app.options.appId;
 
 
 export default function AccessDashboard({ user }) {
