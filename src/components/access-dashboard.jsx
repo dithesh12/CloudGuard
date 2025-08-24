@@ -16,7 +16,7 @@ import {
   Link as LinkIcon,
   Loader2,
 } from "lucide-react";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { signInWithPopup, GoogleAuthProvider, getAdditionalUserInfo, reauthenticateWithPopup } from "firebase/auth";
 
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
@@ -64,6 +64,7 @@ export default function AccessDashboard({ user }) {
   const [gapiLoaded, setGapiLoaded] = React.useState(false);
   const [gisLoaded, setGisLoaded] = React.useState(false);
   const [isPickerLoading, setIsPickerLoading] = React.useState(false);
+  const [tokenClient, setTokenClient] = React.useState(null);
   
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -107,15 +108,16 @@ export default function AccessDashboard({ user }) {
     }
 
     try {
-      const result = await signInWithPopup(auth, googleProvider);
+      const result = await reauthenticateWithPopup(auth.currentUser, googleProvider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
+
       if (credential && credential.accessToken) {
         createPicker(credential.accessToken);
       } else {
         setIsPickerLoading(false);
         toast({
           title: 'Authentication Failed',
-          description: 'Could not get access token.',
+          description: 'Could not get access token for Google Drive.',
           variant: 'destructive',
         });
       }
@@ -124,8 +126,7 @@ export default function AccessDashboard({ user }) {
       console.error('Error getting access token:', error);
       toast({
         title: 'Error',
-        description:
-          'Could not get access token for Google Drive. Please try signing in again.',
+        description: 'Could not get access token for Google Drive. Please try again.',
         variant: 'destructive',
       });
     }
@@ -385,5 +386,3 @@ export default function AccessDashboard({ user }) {
     </div>
   );
 }
-
-    
