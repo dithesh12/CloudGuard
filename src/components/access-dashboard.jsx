@@ -81,7 +81,7 @@ export default function AccessDashboard({ user }) {
   }, []);
 
   React.useEffect(() => {
-    if (isGisLoaded) {
+    if (isGisLoaded && user) {
       const client = window.google.accounts.oauth2.initTokenClient({
         client_id: OAUTH_CLIENT_ID,
         scope: SCOPES,
@@ -89,7 +89,7 @@ export default function AccessDashboard({ user }) {
       });
       setTokenClient(client);
     }
-  }, [isGisLoaded]);
+  }, [isGisLoaded, user]);
   
   const loadPickerApi = () => {
     if (pickerInited.current) {
@@ -146,6 +146,7 @@ export default function AccessDashboard({ user }) {
     loadPickerApi();
 
     if (tokenClient) {
+        // Use the GIS client to request a token
         tokenClient.callback = (resp) => {
             if (resp.error !== undefined) {
                 setIsPickerLoading(false);
@@ -154,7 +155,7 @@ export default function AccessDashboard({ user }) {
             }
             createPicker(resp.access_token);
         };
-        tokenClient.requestAccessToken({prompt: ''});
+        tokenClient.requestAccessToken({prompt: 'consent'});
     } else {
       setIsPickerLoading(false);
       toast({ title: 'Initialization Error', description: 'Google authentication is not ready yet.', variant: 'destructive'});
