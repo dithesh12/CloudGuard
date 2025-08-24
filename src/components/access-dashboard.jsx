@@ -42,7 +42,15 @@ import { useToast } from "../hooks/use-toast";
 import { TimePicker } from "./time-picker";
 import { OAUTH_CLIENT_ID, API_KEY } from "@/lib/firebase";
 
-const initialUsers = [];
+const initialUsers = [
+  {
+    name: "Test User",
+    email: "test@example.com",
+    avatar: `https://placehold.co/40x40.png`,
+    accessLevel: "Viewer",
+    priority: 1,
+  },
+];
 
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file';
 const APP_ID = OAUTH_CLIENT_ID.split('-')[0];
