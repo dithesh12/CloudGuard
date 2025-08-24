@@ -19,7 +19,7 @@ import { auth, googleProvider } from '@/lib/firebase';
 import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const GoogleIcon = (props) => (
   <svg viewBox="0 0 48 48" {...props}>
@@ -48,14 +48,17 @@ export default function LoginPage() {
       router.push('/dashboard');
     } catch (error) {
       console.error("Firebase login error:", error);
+      let errorMessage = "An unexpected error occurred. Please try again.";
       if (error.code === 'auth/invalid-credential') {
-        setError('Invalid email or password. Please try again.');
-      } else {
-        setError(error.message);
+        errorMessage = "Invalid email or password. Please check your credentials, or sign up if you don't have an account.";
+      } else if (error.code) {
+        errorMessage = error.message;
       }
+      
+      setError(errorMessage);
       toast({
         title: "Login Failed",
-        description: error.code === 'auth/invalid-credential' ? 'Invalid email or password.' : error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -71,9 +74,11 @@ export default function LoginPage() {
       router.push('/dashboard');
     } catch (error) {
       console.error("Google sign-in error:", error);
-      let description = error.message;
+      let description = "An unexpected error occurred during Google Sign-In.";
       if (error.code === 'auth/account-exists-with-different-credential') {
         description = "An account with this email already exists. Please sign in with the method you originally used (e.g., password).";
+      } else if (error.code) {
+        description = error.message;
       }
       setError(description);
       toast({
@@ -103,6 +108,15 @@ export default function LoginPage() {
           <CardDescription>Enter your credentials to access your dashboard</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+           {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Login Failed</AlertTitle>
+                <AlertDescription>
+                  {error}
+                </AlertDescription>
+              </Alert>
+            )}
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -112,14 +126,6 @@ export default function LoginPage() {
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={isLoading || isGoogleLoading}/>
             </div>
-             {error && (
-              <Alert variant="destructive" className="py-2 px-3">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-xs">
-                  {error}
-                </AlertDescription>
-              </Alert>
-            )}
             <Button className="w-full" type="submit" disabled={isLoading || isGoogleLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sign In
