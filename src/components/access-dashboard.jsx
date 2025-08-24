@@ -16,7 +16,7 @@ import {
   Link as LinkIcon,
   Loader2,
 } from "lucide-react";
-import { reauthenticateWithPopup, signInWithPopup } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
