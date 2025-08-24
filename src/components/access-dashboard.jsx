@@ -42,7 +42,6 @@ import { useToast } from "../hooks/use-toast";
 import { TimePicker } from "./time-picker";
 import { OAUTH_CLIENT_ID, API_KEY } from "@/lib/firebase";
 import { updatePermissions } from "@/ai/flows/update-permissions-flow";
-import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
 const initialUsers = [
@@ -78,18 +77,16 @@ export default function AccessDashboard({ user }) {
   
   const isDriveReady = gapiLoaded && gisLoaded && pickerApiLoaded;
   
-  const handleAuthResult = React.useCallback((tokenResponse) => {
-    if (tokenResponse && tokenResponse.access_token) {
-      if (!isDriveReady) return;
-      
-      const picker = new google.picker.PickerBuilder()
-        .addView(google.picker.ViewId.DOCS)
+  const createPicker = React.useCallback((tokenResponse) => {
+    if (tokenResponse.access_token && window.google?.picker) {
+      const picker = new window.google.picker.PickerBuilder()
+        .addView(window.google.picker.ViewId.DOCS)
         .setOAuthToken(tokenResponse.access_token)
         .setDeveloperKey(API_KEY)
         .setAppId(APP_ID)
         .setCallback((data) => {
            setIsPickerLoading(false);
-           if (data.action === google.picker.Action.PICKED) {
+           if (data.action === window.google.picker.Action.PICKED) {
              const file = data.docs[0];
              setSelectedFile({
                name: file.name,
@@ -100,7 +97,7 @@ export default function AccessDashboard({ user }) {
                title: "File Selected",
                description: `Now managing access for ${file.name}.`,
              });
-           } else if (data.action === google.picker.Action.CANCEL) {
+           } else if (data.action === window.google.picker.Action.CANCEL) {
               toast({
                title: "Selection Cancelled",
                description: `You can select a file at any time.`,
@@ -110,12 +107,12 @@ export default function AccessDashboard({ user }) {
         })
         .build();
       picker.setVisible(true);
-
     } else {
-      setIsPickerLoading(false);
-      toast({ title: 'Authentication Error', description: 'Failed to get access token.', variant: 'destructive'});
+       setIsPickerLoading(false);
+       toast({ title: 'Authentication Error', description: 'Failed to get access token or picker not ready.', variant: 'destructive'});
     }
-  }, [isDriveReady, toast]);
+  }, [toast]);
+
 
   React.useEffect(() => {
     const gapiScript = document.createElement('script');
@@ -142,17 +139,17 @@ export default function AccessDashboard({ user }) {
         setTokenClient(window.google.accounts.oauth2.initTokenClient({
           client_id: OAUTH_CLIENT_ID,
           scope: SCOPES,
-          callback: handleAuthResult,
+          callback: createPicker,
         }));
       }
     };
     document.body.appendChild(gisScript);
     return () => document.body.removeChild(gisScript);
-  }, [gapiLoaded, handleAuthResult]);
+  }, [gapiLoaded, createPicker]);
 
   const handleAuthClick = async () => {
     if (!isDriveReady || !tokenClient) {
-      toast({ title: 'Error', description: 'Picker API is not loaded yet.', variant: 'destructive'});
+      toast({ title: 'Error', description: 'Picker API is not loaded yet. Please wait a moment and try again.', variant: 'destructive'});
       return;
     }
     setIsPickerLoading(true);
@@ -251,7 +248,7 @@ export default function AccessDashboard({ user }) {
       
       const permissionsToSet = users.map(u => ({
         email: u.email,
-        role: u.accessLevel.toLowerCase(),
+        role: u.accessLevel, // Pass the UI role directly e.g. "Editor"
       }));
 
       await updatePermissions({

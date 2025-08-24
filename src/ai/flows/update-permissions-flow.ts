@@ -14,9 +14,20 @@ import {
   GoogleAuth,
 } from 'google-auth-library';
 
+const UIRoleSchema = z.enum(['Viewer', 'Commenter', 'Editor']);
+type UIRole = z.infer<typeof UIRoleSchema>;
+
+// Mapping from user-friendly UI role to Google Drive API role
+const roleMapping: Record<UIRole, 'viewer' | 'commenter' | 'writer'> = {
+  'Viewer': 'viewer',
+  'Commenter': 'commenter',
+  'Editor': 'writer',
+};
+
+
 const PermissionSchema = z.object({
   email: z.string().email(),
-  role: z.enum(['owner', 'organizer', 'fileOrganizer', 'writer', 'commenter', 'viewer']),
+  role: UIRoleSchema,
 });
 
 export const UpdatePermissionsInputSchema = z.object({
@@ -68,15 +79,23 @@ const updatePermissionsFlow = ai.defineFlow(
       });
 
       const existingUserPermissions = existingPermissions.filter(p => p.role !== 'owner' && p.emailAddress);
-
-      // 2. Determine permissions to add/update
-      const permissionsToCreate = permissions.filter(p => 
-        !existingUserPermissions.some(ep => ep.emailAddress === p.email && ep.role === p.role)
-      );
       
-      // 3. Determine permissions to remove
+      const desiredPermissions = permissions.map(p => ({ email: p.email, role: roleMapping[p.role] }));
+
+      // 2. Determine permissions to add (new users)
+      const permissionsToCreate = desiredPermissions.filter(dp => 
+        !existingUserPermissions.some(ep => ep.emailAddress === dp.email)
+      );
+
+      // 3. Determine permissions to update (existing users with changed roles)
+      const permissionsToUpdate = desiredPermissions.filter(dp => {
+        const existingPerm = existingUserPermissions.find(ep => ep.emailAddress === dp.email);
+        return existingPerm && existingPerm.role !== dp.role;
+      });
+
+      // 4. Determine permissions to remove (users no longer in the list)
       const permissionsToRemove = existingUserPermissions.filter(ep => 
-        !permissions.some(p => p.email === ep.emailAddress)
+        ep.emailAddress && !desiredPermissions.some(dp => dp.email === ep.emailAddress)
       );
 
       // Execute creation requests
@@ -89,8 +108,22 @@ const updatePermissionsFlow = ai.defineFlow(
             emailAddress: p.email,
             expirationTime: expirationDate,
           },
-          sendNotificationEmail: false, // Set to true to notify users
+          sendNotificationEmail: false,
         });
+      }
+
+      // Execute update requests
+      for (const p of permissionsToUpdate) {
+         const existingPerm = existingUserPermissions.find(ep => ep.emailAddress === p.email);
+         if (existingPerm?.id) {
+            await drive.permissions.update({
+                fileId,
+                permissionId: existingPerm.id,
+                requestBody: {
+                    role: p.role,
+                },
+            });
+         }
       }
 
       // Execute deletion requests
@@ -102,10 +135,6 @@ const updatePermissionsFlow = ai.defineFlow(
           });
         }
       }
-      
-      // For simplicity, this example doesn't handle role *updates* for existing users,
-      // but focuses on adding new users and removing those no longer in the list.
-      // A full implementation would also compare roles and update them if they differ.
 
       return { success: true, message: 'Permissions updated successfully.' };
     } catch (error: any) {
