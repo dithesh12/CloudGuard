@@ -16,6 +16,7 @@ import {
   Link as LinkIcon,
   Loader2,
 } from "lucide-react";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
@@ -96,28 +97,37 @@ export default function AccessDashboard({ user }) {
   const handleAuthClick = async () => {
     setIsPickerLoading(true);
     if (!user || !auth.currentUser) {
-        toast({ title: "Not logged in", description: "Please log in to select a file.", variant: "destructive"});
-        setIsPickerLoading(false);
-        return;
+      toast({
+        title: 'Not logged in',
+        description: 'Please log in to select a file.',
+        variant: 'destructive',
+      });
+      setIsPickerLoading(false);
+      return;
     }
 
     try {
-        // Re-authenticate to get a fresh access token with the correct scope
-        const { user: refreshedUser } = await auth.currentUser.linkWithPopup(googleProvider);
-        const tokenResult = await refreshedUser.getIdTokenResult();
-        const credential = googleProvider.credentialFromResult({user: refreshedUser});
-        
-        if (credential && credential.accessToken) {
-            createPicker(credential.accessToken);
-        } else {
-             setIsPickerLoading(false);
-             toast({ title: "Authentication Failed", description: "Could not get access token.", variant: "destructive"});
-        }
-
-    } catch (error) {
+      const result = await signInWithPopup(auth, googleProvider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential && credential.accessToken) {
+        createPicker(credential.accessToken);
+      } else {
         setIsPickerLoading(false);
-        console.error("Error getting access token:", error);
-        toast({ title: "Error", description: "Could not get access token for Google Drive. Please try signing in again.", variant: "destructive"});
+        toast({
+          title: 'Authentication Failed',
+          description: 'Could not get access token.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      setIsPickerLoading(false);
+      console.error('Error getting access token:', error);
+      toast({
+        title: 'Error',
+        description:
+          'Could not get access token for Google Drive. Please try signing in again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -375,3 +385,5 @@ export default function AccessDashboard({ user }) {
     </div>
   );
 }
+
+    
