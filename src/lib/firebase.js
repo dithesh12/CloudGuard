@@ -14,6 +14,7 @@ export const firebaseConfig = {
 
 // This is your OAuth 2.0 Client ID for the web application
 export const OAUTH_CLIENT_ID = "241317652095-uus7cbiu45jfi2ll64ilb39vqsqjhg73.apps.googleusercontent.com";
+export const API_KEY = firebaseConfig.apiKey;
 
 
 // Initialize Firebase

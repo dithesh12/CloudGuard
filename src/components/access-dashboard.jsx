@@ -40,7 +40,7 @@ import { UserAccessTable } from "./user-access-table";
 import { AddUserDialog } from "./add-user-dialog";
 import { useToast } from "../hooks/use-toast";
 import { TimePicker } from "./time-picker";
-import { OAUTH_CLIENT_ID } from "@/lib/firebase";
+import { OAUTH_CLIENT_ID, API_KEY } from "@/lib/firebase";
 
 const initialUsers = [];
 
@@ -64,6 +64,7 @@ export default function AccessDashboard({ user }) {
   const [isPickerLoading, setIsPickerLoading] = React.useState(false);
   
   const pickerInited = React.useRef(false);
+  let picker;
 
   React.useEffect(() => {
     const onGisLoad = () => setIsGisLoaded(true);
@@ -129,11 +130,17 @@ export default function AccessDashboard({ user }) {
   };
 
   const createPicker = (token) => {
-    if (!isPickerApiLoaded) return;
+    if (!isPickerApiLoaded) {
+      setIsPickerLoading(false);
+      toast({ title: 'Error', description: 'Picker API is not loaded yet.', variant: 'destructive'});
+      return;
+    };
+
     const picker = new google.picker.PickerBuilder()
-      .enableFeature(google.picker.Feature.NAV_HIDDEN)
-      .setAppId(APP_ID)
+      .addView(google.picker.ViewId.DOCS)
       .setOAuthToken(token)
+      .setDeveloperKey(API_KEY)
+      .setAppId(APP_ID)
       .setCallback(pickerCallback)
       .build();
       
@@ -145,7 +152,6 @@ export default function AccessDashboard({ user }) {
     loadPickerApi();
 
     if (tokenClient) {
-        // Use the GIS client to request a token
         tokenClient.callback = (resp) => {
             if (resp.error !== undefined) {
                 setIsPickerLoading(false);
