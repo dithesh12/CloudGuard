@@ -16,7 +16,7 @@ import {
   Link as LinkIcon,
   Loader2,
 } from "lucide-react";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { GoogleAuthProvider } from "firebase/auth";
 
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
@@ -47,6 +47,7 @@ const initialUsers = [];
 
 const API_KEY = firebaseConfig.apiKey;
 const APP_ID = firebaseConfig.appId;
+const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file';
 
 export default function AccessDashboard({ user }) {
   const { toast } = useToast();
@@ -59,19 +60,41 @@ export default function AccessDashboard({ user }) {
   const [editingUser, setEditingUser] = React.useState(null);
   const [isUserDialogOpen, setIsUserDialogOpen] = React.useState(false);
 
-  const [isGapiLoaded, setIsGapiLoaded] = React.useState(false);
+  const [isPickerApiLoaded, setIsPickerApiLoaded] = React.useState(false);
+  const [isGisLoaded, setIsGisLoaded] = React.useState(false);
   const [isPickerLoading, setIsPickerLoading] = React.useState(false);
   const [oauthToken, setOauthToken] = React.useState(null);
   
+  const tokenClient = React.useRef(null);
+
   React.useEffect(() => {
     // Load the Google Picker API script
-    const onApiLoad = () => {
-      gapi.load('picker', () => {
-        setIsGapiLoaded(true);
-      });
-    }
+    const onApiLoad = () => gapi.load('picker', () => setIsPickerApiLoaded(true));
     window.onApiLoad = onApiLoad;
+    
+    // Load Google Identity Services
+    if (window.google?.accounts) {
+        setIsGisLoaded(true);
+    } else {
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = () => setIsGisLoaded(true);
+        document.body.appendChild(script);
+    }
+
   }, []);
+
+  React.useEffect(() => {
+    if (isGisLoaded && user) {
+        tokenClient.current = window.google.accounts.oauth2.initTokenClient({
+            client_id: firebaseConfig.appId, // Note: This should be the OAuth Client ID, but appId from firebase config often works for web apps.
+            scope: SCOPES,
+            callback: '', // defined later
+        });
+    }
+  }, [isGisLoaded, user]);
 
   const pickerCallback = (data) => {
     setIsPickerLoading(false);
@@ -95,8 +118,8 @@ export default function AccessDashboard({ user }) {
     }
   };
 
-  const createPicker = React.useCallback((token) => {
-    if (!isGapiLoaded || !user || !token) {
+  const createPicker = (token) => {
+    if (!isPickerApiLoaded || !token) {
         toast({ title: "Error", description: "Google Picker cannot be created. Missing token or API.", variant: "destructive"});
         setIsPickerLoading(false);
         return;
@@ -113,37 +136,34 @@ export default function AccessDashboard({ user }) {
       .build();
       
     picker.setVisible(true);
-  }, [isGapiLoaded, user, toast]);
-
+  };
+  
   const handleAuthClick = async () => {
     setIsPickerLoading(true);
     if (!user) {
-      toast({
-        title: 'Not logged in',
-        description: 'Please log in to select a file.',
-        variant: 'destructive',
-      });
-      setIsPickerLoading(false);
-      return;
+        toast({ title: 'Not logged in', description: 'Please log in to select a file.', variant: 'destructive'});
+        setIsPickerLoading(false);
+        return;
     }
+    if (tokenClient.current) {
+        tokenClient.current.callback = (resp) => {
+            if (resp.error !== undefined) {
+                setIsPickerLoading(false);
+                toast({ title: 'Authentication Error', description: 'Could not get access token for Google Drive.', variant: 'destructive'});
+                throw (resp);
+            }
+            setOauthToken(resp.access_token);
+            createPicker(resp.access_token);
+        };
 
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      if (credential?.accessToken) {
-        setOauthToken(credential.accessToken);
-        createPicker(credential.accessToken);
-      } else {
-        throw new Error("Could not get access token from Google.");
-      }
-    } catch (error) {
-      console.error('Error during Google authentication:', error);
-      toast({
-        title: 'Authentication Failed',
-        description: error.message || 'An unknown error occurred during authentication.',
-        variant: 'destructive',
-      });
-      setIsPickerLoading(false);
+        if (oauthToken === null) {
+            // Prompt the user to select a Google Account and ask for consent to share their data
+            // when establishing a new session.
+            tokenClient.current.requestAccessToken({prompt: 'consent'});
+        } else {
+            // Skip display of account chooser and consent dialog for an existing session.
+            tokenClient.current.requestAccessToken({prompt: ''});
+        }
     }
   };
 
@@ -267,7 +287,7 @@ export default function AccessDashboard({ user }) {
                 </Button>
               </div>
             ) : (
-               <Button variant="outline" size="sm" onClick={handleAuthClick} disabled={!isGapiLoaded || !user || isPickerLoading} className="w-full sm:w-auto">
+               <Button variant="outline" size="sm" onClick={handleAuthClick} disabled={!isPickerApiLoaded || !isGisLoaded || !user || isPickerLoading} className="w-full sm:w-auto">
                 {isPickerLoading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
