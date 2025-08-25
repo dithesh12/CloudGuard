@@ -68,7 +68,9 @@ export default function LoginPage() {
     } catch (error) {
       console.error("Google sign-in error:", error);
       let description = "An unexpected error occurred during Google Sign-In.";
-      if (error.code === 'auth/account-exists-with-different-credential') {
+      if (error.code === 'auth/popup-blocked') {
+        description = "The Google Sign-In pop-up was blocked by your browser. Please disable your pop-up blocker and try again.";
+      } else if (error.code === 'auth/account-exists-with-different-credential') {
         description = "An account with this email already exists using a password. Please sign in with your email and password instead.";
       } else {
         description = `Google sign-in failed: ${error.code}`;
