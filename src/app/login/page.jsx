@@ -49,8 +49,8 @@ export default function LoginPage() {
     } catch (error) {
       console.error("Firebase login error:", error);
       let errorMessage = "An unexpected error occurred. Please try again.";
-      if (error.code === 'auth/invalid-credential') {
-        errorMessage = "Invalid email or password. Please check your credentials, or click 'Sign up' to create a new account.";
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        errorMessage = "Invalid email or password. Please check your credentials. If you signed up with Google, please use the 'Continue with Google' button.";
       } else if (error.code) {
         errorMessage = error.message;
       }
@@ -71,7 +71,7 @@ export default function LoginPage() {
       console.error("Google sign-in error:", error);
       let description = "An unexpected error occurred during Google Sign-In.";
       if (error.code === 'auth/account-exists-with-different-credential') {
-        description = "An account with this email already exists. Please sign in with the method you originally used (e.g., password).";
+        description = "An account with this email already exists but was created with a password. Please sign in using your email and password instead.";
       } else if (error.code) {
         description = error.message;
       }
