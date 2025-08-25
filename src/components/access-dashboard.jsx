@@ -47,7 +47,6 @@ import { OAUTH_CLIENT_ID, API_KEY } from "@/lib/firebase";
 import { updatePermissions } from "@/ai/flows/update-permissions-flow";
 import { auth } from "@/lib/firebase";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
-import { Slider } from "./ui/slider";
 
 const initialUsers = [];
 
@@ -178,19 +177,17 @@ export default function AccessDashboard({ user }) {
       setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...userData } : u));
       toast({
         title: "User Updated",
-        description: `Access details for ${userData.email.split('@')[0]} have been updated.`,
+        description: `Access details for ${userData.email} have been updated.`,
       });
     } else {
       const userToAdd = {
         ...userData,
         id: `user-${Date.now()}`,
-        name: userData.email.split('@')[0],
-        avatar: `https://placehold.co/40x40.png`,
       };
       setUsers([...users, userToAdd]);
       toast({
         title: "User Added",
-        description: `${userToAdd.name} has been granted temporary access.`,
+        description: `${userData.email} has been granted temporary access.`,
       });
     }
     setEditingUser(null);
@@ -432,17 +429,7 @@ export default function AccessDashboard({ user }) {
                         </Tooltip>
                         </TooltipProvider>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <Slider
-                            id="view-limit"
-                            defaultValue={[1]}
-                            max={100}
-                            step={1}
-                            disabled
-                            className={cn("w-full")}
-                        />
-                         <span className="text-sm font-medium text-muted-foreground w-20 text-center">Unlimited</span>
-                    </div>
+                    <Input id="view-limit" type="number" placeholder="Unlimited" disabled className="w-full" />
                 </div>
 
             </div>

@@ -10,7 +10,6 @@ import {
   TableHeader,
   TableRow,
 } from "./ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { MoreHorizontal, Trash2, Edit } from "lucide-react";
@@ -41,7 +40,7 @@ export function UserAccessTable({ users, onRemoveUser, onEditUser }) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="min-w-[250px] w-[60%] sm:w-auto">User</TableHead>
+            <TableHead className="w-[60%]">User Email</TableHead>
             <TableHead>Access Level</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -51,16 +50,7 @@ export function UserAccessTable({ users, onRemoveUser, onEditUser }) {
             users.map((user) => (
               <TableRow key={user.id}>
                 <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="portrait person" />
-                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-medium truncate max-w-[120px] sm:max-w-none">{user.name}</div>
-                      <div className="text-sm text-muted-foreground truncate max-w-[120px] sm:max-w-none">{user.email}</div>
-                    </div>
-                  </div>
+                  <div className="font-medium truncate">{user.email}</div>
                 </TableCell>
                 <TableCell>
                   <Badge variant={getBadgeVariant(user.accessLevel)}>{user.accessLevel}</Badge>
@@ -101,5 +91,3 @@ export function UserAccessTable({ users, onRemoveUser, onEditUser }) {
     </div>
   );
 }
-
-    
