@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -54,9 +55,21 @@ export default function RegisterPage() {
       router.push('/dashboard');
     } catch (error) {
       console.error("Firebase registration error:", error);
+      let description = error.message;
+      if (error.code === 'auth/email-already-in-use') {
+         description = (
+          <span>
+            This email is already in use. Please{' '}
+            <button type="button" onClick={() => router.push('/login')} className="underline font-bold">
+              log in
+            </button>
+            {' '}instead.
+          </span>
+        );
+      }
       toast({
         title: "Registration Failed",
-        description: error.message,
+        description,
         variant: "destructive",
       });
     } finally {

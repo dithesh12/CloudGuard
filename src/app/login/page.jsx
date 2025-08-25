@@ -13,13 +13,12 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Loader2 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { auth, googleProvider } from '@/lib/firebase';
 import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const GoogleIcon = (props) => (
   <svg viewBox="0 0 48 48" {...props}>
@@ -32,28 +31,29 @@ const GoogleIcon = (props) => (
 
 export default function LoginPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [error, setError] = useState(null);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/dashboard');
     } catch (error) {
       console.error("Firebase login error:", error.code);
-      let errorMessage = "An unexpected error occurred. Please try again.";
-      if (error.code === 'auth/invalid-credential') {
-        errorMessage = "Invalid email or password. Please check your credentials and try again. If you signed up using Google, please use the 'Continue with Google' option.";
-      } else {
-         errorMessage = `Login failed: ${error.code}. Please try again.`;
+      let description = "An unexpected error occurred. Please try again.";
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+        description = "Invalid credentials. Please check your email and password, or try signing in with Google.";
       }
-      setError(errorMessage);
+      toast({
+        title: "Login Failed",
+        description,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -61,7 +61,6 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
-    setError(null);
     try {
       await signInWithPopup(auth, googleProvider);
       router.push('/dashboard');
@@ -69,13 +68,17 @@ export default function LoginPage() {
       console.error("Google sign-in error:", error);
       let description = "An unexpected error occurred during Google Sign-In.";
       if (error.code === 'auth/popup-blocked') {
-        description = "The Google Sign-In pop-up was blocked by your browser. Please disable your pop-up blocker and try again.";
+        description = "The Google Sign-In pop-up was blocked. Please enable pop-ups for this site and try again.";
       } else if (error.code === 'auth/account-exists-with-different-credential') {
         description = "An account with this email already exists using a password. Please sign in with your email and password instead.";
       } else {
-        description = `Google sign-in failed: ${error.code}`;
+        description = `Google sign-in failed: ${error.message}`;
       }
-      setError(description);
+      toast({
+        title: "Google Sign-In Failed",
+        description,
+        variant: "destructive",
+      });
     } finally {
       setIsGoogleLoading(false);
     }
@@ -98,15 +101,6 @@ export default function LoginPage() {
           <CardDescription>Enter your credentials to access your dashboard</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-           {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Login Failed</AlertTitle>
-                <AlertDescription>
-                  {error}
-                </AlertDescription>
-              </Alert>
-            )}
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
