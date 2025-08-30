@@ -50,7 +50,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/t
 
 const initialUsers = [];
 
-const SCOPES = 'https://www.googleapis.com/auth/drive';
+const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 const APP_ID = OAUTH_CLIENT_ID.split('-')[0];
 
 export default function AccessDashboard({ user }) {
