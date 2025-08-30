@@ -123,28 +123,31 @@ export default function AccessDashboard({ user }) {
       setGapiLoaded(true);
     }
     document.body.appendChild(gapiScript);
-    return () => document.body.removeChild(gapiScript);
-  }, []);
 
-  React.useEffect(() => {
-    if (!gapiLoaded) return;
     const gisScript = document.createElement('script');
     gisScript.src = 'https://accounts.google.com/gsi/client';
     gisScript.async = true;
     gisScript.defer = true;
-    gisScript.onload = () => {
-      setGisLoaded(true);
-      if (window.google?.accounts?.oauth2) {
-        setTokenClient(window.google.accounts.oauth2.initTokenClient({
-          client_id: OAUTH_CLIENT_ID,
-          scope: SCOPES,
-          callback: createPicker,
-        }));
-      }
-    };
+    gisScript.onload = () => setGisLoaded(true);
     document.body.appendChild(gisScript);
-    return () => document.body.removeChild(gisScript);
-  }, [gapiLoaded, createPicker]);
+    
+    return () => {
+      document.body.removeChild(gapiScript);
+      document.body.removeChild(gisScript);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (gisLoaded) {
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: OAUTH_CLIENT_ID,
+        scope: SCOPES,
+        callback: createPicker,
+      });
+      setTokenClient(client);
+    }
+  }, [gisLoaded, createPicker]);
+
 
   const handleAuthClick = async () => {
     if (!isDriveReady || !tokenClient) {
