@@ -8,9 +8,31 @@
 
 import { ai } from '@/ai/genkit';
 import { getDrive } from '@/ai/google';
-import { UpdatePermissionsInputSchema, UpdatePermissionsOutputSchema, type UpdatePermissionsInput, type UpdatePermissionsOutput } from '@/lib/types';
+import { z } from 'zod';
 import { GoogleAuth } from 'google-auth-library';
 
+
+const UIRoleSchema = z.enum(['Viewer', 'Commenter', 'Editor']);
+
+const PermissionSchema = z.object({
+  email: z.string().email(),
+  role: UIRoleSchema,
+});
+
+const UpdatePermissionsInputSchema = z.object({
+  fileId: z.string().describe('The ID of the Google Drive file to update.'),
+  permissions: z.array(PermissionSchema).describe('The list of permissions to apply.'),
+  expirationDate: z.string().optional().describe('An ISO 8601 date string for when the permissions should expire.'),
+  idToken: z.string().describe('The Firebase Auth ID token of the user making the request.'),
+});
+
+const UpdatePermissionsOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+type UpdatePermissionsInput = z.infer<typeof UpdatePermissionsInputSchema>;
+type UpdatePermissionsOutput = z.infer<typeof UpdatePermissionsOutputSchema>;
 
 const roleMapping: Record<'Viewer' | 'Commenter' | 'Editor', 'viewer' | 'commenter' | 'writer'> = {
   'Viewer': 'viewer',
@@ -117,3 +139,4 @@ const updatePermissionsFlow = ai.defineFlow(
     }
   }
 );
+

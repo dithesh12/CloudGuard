@@ -1,6 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 export const firebaseConfig = {
@@ -21,14 +22,17 @@ export const API_KEY = firebaseConfig.apiKey;
 // A try-catch block is used to prevent the app from crashing if the config is invalid.
 let app;
 let auth;
+let db;
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
+  db = getFirestore(app);
 } catch (error) {
   console.error("Invalid Firebase configuration. Please update src/lib/firebase.js with your project's credentials.", error);
   // Provide dummy objects to prevent crashes in other parts of the app
   app = {};
   auth = {};
+  db = {};
 }
 
 const googleProvider = new GoogleAuthProvider();
@@ -36,4 +40,4 @@ googleProvider.addScope('https://www.googleapis.com/auth/drive.readonly');
 googleProvider.addScope('https://www.googleapis.com/auth/drive.file');
 
 
-export { app, auth, googleProvider };
+export { app, auth, db, googleProvider };

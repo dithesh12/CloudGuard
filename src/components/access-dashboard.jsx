@@ -44,7 +44,7 @@ import { AddUserDialog } from "./add-user-dialog";
 import { useToast } from "../hooks/use-toast";
 import { TimePicker } from "./time-picker";
 import { OAUTH_CLIENT_ID, API_KEY } from "@/lib/firebase";
-import { updatePermissions } from "@/ai/flows/update-permissions-flow";
+import { setAccessRule } from "@/ai/flows/set-access-rule-flow";
 import { auth } from "@/lib/firebase";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
@@ -58,6 +58,7 @@ export default function AccessDashboard({ user }) {
   const [dateRange, setDateRange] = React.useState({ from: null, to: null });
   const [startTime, setStartTime] = React.useState('09:00');
   const [endTime, setEndTime] = React.useState('17:00');
+  const [viewLimit, setViewLimit] = React.useState(1);
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
   const [users, setUsers] = React.useState(() => initialUsers.map((u, i) => ({...u, id: `user-${i+1}`})));
   const [selectedFile, setSelectedFile] = React.useState(null);
@@ -240,33 +241,31 @@ export default function AccessDashboard({ user }) {
     try {
       const idToken = await auth.currentUser.getIdToken();
       
-      let expirationDate;
+      let expiryTimestamp;
       if (dateRange?.to) {
         const [hours, minutes] = endTime.split(':');
         const finalDate = new Date(dateRange.to);
         finalDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
-        expirationDate = finalDate.toISOString();
+        expiryTimestamp = finalDate.getTime();
       }
       
-      const permissionsToSet = users.map(u => ({
-        email: u.email,
-        role: u.accessLevel,
-      }));
+      const allowedUsers = users.map(u => u.email);
 
-      await updatePermissions({
+      await setAccessRule({
         fileId: selectedFile.id,
-        permissions: permissionsToSet,
-        expirationDate: expirationDate,
+        ownerId: user.uid,
+        allowedUsers,
+        viewLimit: Number(viewLimit),
+        expiryTimestamp: expiryTimestamp,
         idToken: idToken,
       });
 
-      // In a real app, this would be a unique, secure URL from your backend.
-      // For now, we use the direct file URL as a placeholder.
-      setGeneratedLink(selectedFile.url);
+      const secureLink = `${window.location.origin}/view/${selectedFile.id}`;
+      setGeneratedLink(secureLink);
 
       toast({
         title: "Secure Link Generated",
-        description: `Permissions have been applied to ${selectedFile.name}.`,
+        description: `Permissions have been saved. Share the new link.`,
       });
     } catch (error) {
        console.error("Failed to save changes:", error);
@@ -292,6 +291,7 @@ export default function AccessDashboard({ user }) {
     setDateRange({ from: null, to: null });
     setStartTime('09:00');
     setEndTime('17:00');
+    setViewLimit(1);
     setGeneratedLink(null);
     toast({
       title: "Settings Reset",
@@ -418,18 +418,8 @@ export default function AccessDashboard({ user }) {
                  <div className="space-y-3">
                     <div className="flex items-center gap-2">
                         <Label htmlFor="view-limit">View Limit</Label>
-                        <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger type="button">
-                                <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>This feature is not yet available. <br/> View limits require a backend database to track.</p>
-                            </TooltipContent>
-                        </Tooltip>
-                        </TooltipProvider>
                     </div>
-                    <Input id="view-limit" type="number" placeholder="Unlimited" disabled className="w-full" />
+                    <Input id="view-limit" type="number" placeholder="e.g., 5" value={viewLimit} onChange={(e) => setViewLimit(e.target.value)} disabled={!selectedFile} className="w-full" min="1" />
                 </div>
 
             </div>
@@ -450,7 +440,7 @@ export default function AccessDashboard({ user }) {
                     size="lg"
                   >
                     {isGenerating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
-                    {isGenerating ? 'Applying Permissions...' : 'Generate Secure Link'}
+                    {isGenerating ? 'Applying Rules...' : 'Generate Secure Link'}
                   </Button>
                   
                   {generatedLink && (

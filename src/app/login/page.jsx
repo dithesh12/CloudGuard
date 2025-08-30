@@ -1,7 +1,7 @@
 
 "use client";
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,18 +31,24 @@ const GoogleIcon = (props) => (
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const returnTo = searchParams.get('returnTo');
+
+  const handleLoginSuccess = () => {
+    router.push(returnTo || '/dashboard');
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push('/dashboard');
+      handleLoginSuccess();
     } catch (error) {
       console.error("Firebase login error:", error.code);
       let description = "An unexpected error occurred. Please try again.";
@@ -63,7 +69,7 @@ export default function LoginPage() {
     setIsGoogleLoading(true);
     try {
       await signInWithPopup(auth, googleProvider);
-      router.push('/dashboard');
+      handleLoginSuccess();
     } catch (error) {
       console.error("Google sign-in error:", error);
       let description = "An unexpected error occurred during Google Sign-In.";
