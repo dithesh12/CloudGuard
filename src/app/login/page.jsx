@@ -1,6 +1,6 @@
 
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import {
@@ -52,8 +52,8 @@ export default function LoginPage() {
     } catch (error) {
       console.error("Firebase login error:", error.code);
       let description = "An unexpected error occurred. Please try again.";
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
-        description = "Invalid credentials. Please check your email and password, or try signing in with Google.";
+      if (error.code === 'auth/invalid-credential') {
+        description = "Invalid email or password. Please check your credentials and try again. If you signed up using Google, please use the 'Continue with Google' option.";
       }
       toast({
         title: "Login Failed",

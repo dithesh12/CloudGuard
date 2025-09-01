@@ -55,17 +55,19 @@ export default function RegisterPage() {
       router.push('/dashboard');
     } catch (error) {
       console.error("Firebase registration error:", error);
-      let description = error.message;
+      let description;
       if (error.code === 'auth/email-already-in-use') {
          description = (
           <span>
             This email is already in use. Please{' '}
-            <button type="button" onClick={() => router.push('/login')} className="underline font-bold">
+            <button type="button" onClick={() => router.push('/login')} className="underline font-bold hover:text-primary">
               log in
             </button>
             {' '}instead.
           </span>
         );
+      } else {
+        description = error.message;
       }
       toast({
         title: "Registration Failed",
