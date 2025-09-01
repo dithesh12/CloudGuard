@@ -121,7 +121,7 @@ export default function RegisterPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.g.value)} disabled={isLoading || isGoogleLoading}/>
+              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={isLoading || isGoogleLoading}/>
             </div>
              <div className="space-y-2">
               <Label htmlFor="confirm-password">Confirm Password</Label>
